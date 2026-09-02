@@ -15,10 +15,19 @@
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.13.3",
-    "ts-node-dev": "^2.0.0",
-    "typescript": "^6.0.3",
+    "@universe/shared-permissions": "*",
     "@universe/shared-types": "*",
     "@universe/shared-validation": "*",
-    "@universe/shared-permissions": "*"
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "@casl/ability": "^7.0.1",
+    "bcrypt": "^6.0.0",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "mysql2": "^3.24.3",
+    "typeorm": "^1.1.1",
+    "zod": "^4.5.4"
   }
 }
