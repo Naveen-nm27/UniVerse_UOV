@@ -9,7 +9,9 @@
     "packages/*"
   ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev:client": "npm run dev -w apps/client",
+    "dev:server": "npm run dev -w apps/server",
+    "dev": "concurrently \"npm:dev:client\" \"npm:dev:server\""
   },
   "repository": {
     "type": "git",
@@ -102,5 +104,7 @@
     "xtend": "^4.0.2",
     "yn": "^3.1.1"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "concurrently": "^10.0.5"
+  }
 }
