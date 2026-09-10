@@ -3,23 +3,19 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "type":"module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "ts-node-dev --respawn src/server.ts"
+    "dev": "nodemon src/server.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@types/bcrypt": "^6.0.0",
-    "@types/express": "^5.0.6",
-    "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^24.13.3",
     "@universe/shared-permissions": "*",
     "@universe/shared-types": "*",
     "@universe/shared-validation": "*",
-    "ts-node-dev": "^2.0.0",
-    "typescript": "^6.0.3"
+    "nodemon": "^3.1.14"
   },
   "dependencies": {
     "@casl/ability": "^7.0.1",
