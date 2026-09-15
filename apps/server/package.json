@@ -1,29 +1,30 @@
 {
-  "name": "server",
+  "name": "@universe/server",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "type":"module",
+  "private": true,
+  "description": "UniVerse UOV API",
+  "type": "module",
+  "main": "src/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon src/server.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "devDependencies": {
+  "dependencies": {
+    "@casl/ability": "^7.0.1",
     "@universe/shared-permissions": "*",
     "@universe/shared-types": "*",
     "@universe/shared-validation": "*",
-    "nodemon": "^3.1.14"
-  },
-  "dependencies": {
-    "@casl/ability": "^7.0.1",
     "bcrypt": "^6.0.0",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "mysql2": "^3.24.3",
-    "typeorm": "^1.1.1",
+    "reflect-metadata": "^0.2.2",
+    "typeorm": "^0.3.27",
     "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }

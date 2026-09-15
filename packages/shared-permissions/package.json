@@ -1,13 +1,15 @@
 {
   "name": "@universe/shared-permissions",
   "version": "1.0.0",
-  "description": "",
+  "private": true,
+  "description": "CASL ability definitions for UniVerse UOV",
+  "type": "module",
   "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "scripts": {},
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs"
+  "dependencies": {
+    "@casl/ability": "^7.0.1"
+  }
 }

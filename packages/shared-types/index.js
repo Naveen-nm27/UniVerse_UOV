@@ -43,17 +43,17 @@
  */
 
 export function isStudent(user) {
-  return user.role === "student";
+  return user?.role === "student";
 }
 
 export function isLecturer(user) {
-  return user.role === "lecturer";
+  return user?.role === "lecturer";
 }
 
 export function isAdministrator(user) {
-  return user.role === "administrator";
+  return user?.role === "administrator";
 }
 
 export function isManagementAssistant(user) {
-  return user.role === "management_assistant";
+  return user?.role === "management_assistant";
 }
