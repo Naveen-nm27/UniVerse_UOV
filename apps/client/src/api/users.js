@@ -1,10 +1,10 @@
 const API_BASE = "http://localhost:4000/api";
 
-export async function registerUser({ email, password }) {
+export async function registerUser({ email, password, fullName, studentNumber, programmeId, batchId }) {
   const res = await fetch(`${API_BASE}/users/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, fullName, studentNumber, programmeId, batchId }),
   });
 
   const data = await res.json();
