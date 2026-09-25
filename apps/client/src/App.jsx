@@ -1,8 +1,8 @@
-import RegisterForm from "./components/RegisterForm";
+import LoginForm from "./components/LoginForm";
 import "./App.css";
 
 function App() {
-  return <RegisterForm />;
+  return <LoginForm />;
 }
 
 export default App;
