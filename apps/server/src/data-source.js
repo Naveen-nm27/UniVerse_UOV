@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { DataSource } from "typeorm";
 import { User } from "./entities/User.js";
+import { ManStaff } from "./entities/ManAssistence.js";
 
 export const AppDataSource = new DataSource({
   type: "mysql",
@@ -10,5 +11,5 @@ export const AppDataSource = new DataSource({
   password: process.env.DB_PASSWORD || "admin",
   database: process.env.DB_NAME || "universe_uov",
   synchronize: true,
-  entities: [User],
+  entities: [User, ManStaff],
 });
