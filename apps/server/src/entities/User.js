@@ -16,3 +16,4 @@ export const User = new EntitySchema({
     updatedAt: { type: "timestamp", updateDate: true },
   },
 });
+
