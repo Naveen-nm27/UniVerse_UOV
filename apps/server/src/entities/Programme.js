@@ -1,27 +1,41 @@
 import { EntitySchema } from "typeorm";
 
 export default new EntitySchema({
-  name: "Batch",
-  tableName: "BATCHES",
+  name: "Programme",
+  tableName: "PROGRAMMES",
 
   columns: {
-    batchId: {
-      name: "batch_id",
+    programmeId: {
+      name: "programme_id",
       type: "int",
       unsigned: true,
       primary: true,
       generated: "increment"
     },
 
-    batchName: {
-      name: "batch_name",
+    programmeCode: {
+      name: "programme_code",
       type: "varchar",
-      length: 100
+      length: 20,
+      unique: true
     },
 
-    startDate: {
-      name: "start_date",
-      type: "date"
+    programmeName: {
+      name: "programme_name",
+      type: "varchar",
+      length: 255
+    },
+
+    departmentId: {
+      name: "department_id",
+      type: "int",
+      unsigned: true
+    },
+
+    durationYears: {
+      name: "duration_years",
+      type: "tinyint",
+      unsigned: true
     }
   }
 });
