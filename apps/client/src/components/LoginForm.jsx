@@ -2,10 +2,13 @@ import { useState } from "react";
 import { loginUser } from "../api/users";
 
 const dashboardByRole = {
-  student: "/student/dashboard",
-  lecturer: "/lecturer/dashboard",
-  administrator: "/admin/dashboard",
-  management_assistant: "/management-assistant/dashboard",
+  student: "/student",
+  lecturer: "/lecturer",
+  administrator: "/admin",
+  management_assistant: "/ma",
+  hod: "/hod",
+  dean: "/dean",
+  ma: "/ma",
 };
 
 export default function LoginForm() {
