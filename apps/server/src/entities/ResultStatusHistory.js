@@ -44,6 +44,7 @@ export default new EntitySchema({
       unsigned: true
     },
 
+    
     changedAt: {
       name: "changed_at",
       type: "datetime",

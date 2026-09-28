@@ -73,6 +73,7 @@ export default new EntitySchema({
       updateDate: true
     },
 
+
     publishedAt: {
       name: "published_at",
       type: "datetime",

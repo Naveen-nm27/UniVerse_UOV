@@ -19,6 +19,7 @@ export default new EntitySchema({
       unsigned: true
     },
 
+    
     icaNumber: {
       name: "ica_number",
       type: "tinyint",

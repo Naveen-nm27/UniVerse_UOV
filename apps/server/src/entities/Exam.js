@@ -31,6 +31,7 @@ export default new EntitySchema({
       default: false
     },
 
+    
     examDate: {
       name: "exam_date",
       type: "date",

@@ -38,6 +38,7 @@ export default new EntitySchema({
       default: true
     },
 
+    
     status: {
       type: "varchar",
       length: 20,

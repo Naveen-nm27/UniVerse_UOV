@@ -36,6 +36,7 @@ export default new EntitySchema({
       unsigned: true
     },
 
+    
     enteredAt: {
       name: "entered_at",
       type: "datetime",
