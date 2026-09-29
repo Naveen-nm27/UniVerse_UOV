@@ -12,31 +12,38 @@ import {
 
 const router = Router();
 
+
 router.use(authenticate);
+
 
 router.use(
   requireRole("STUDENT")
 );
+
 
 router.get(
   "/dashboard",
   dashboard
 );
 
+
 router.get(
   "/results",
   results
 );
+
 
 router.get(
   "/results/:resultId",
   resultDetails
 );
 
+
 router.get(
   "/assessments",
   assessments
 );
+
 
 router.get(
   "/downloads/result-summary",
