@@ -28,4 +28,9 @@ router.get(
   results
 );
 
+router.get(
+  "/results/:resultId",
+  resultDetails
+);
+
 export default router;

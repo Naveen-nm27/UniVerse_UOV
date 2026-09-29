@@ -6,6 +6,31 @@ import {
   getPublishedResults
 } from "../services/student-results.service.js";
 
+import {
+  getResultDetails
+} from "../services/student-result-details.service.js";
+
+export async function resultDetails(
+  req,
+  res,
+  next
+) {
+
+  try {
+
+    const data =
+      await getResultDetails(
+        req.auth.userId,
+        req.params.resultId
+      );
+
+    res.json({ data });
+
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function results(req, res, next) {
 
   try {
