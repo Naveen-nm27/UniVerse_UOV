@@ -23,4 +23,9 @@ router.get(
   dashboard
 );
 
+router.get(
+  "/results",
+  results
+);
+
 export default router;
