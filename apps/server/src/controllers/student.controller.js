@@ -14,6 +14,46 @@ import {
   getStudentAssessments
 } from "../services/student-assessments.service.js";
 
+
+import {
+  generateResultPdf
+} from "../services/result-download.service.js";
+
+export async function downloadResults(
+  req,
+  res,
+  next
+) {
+
+  try {
+
+    const pdf =
+      await generateResultPdf(
+        req.auth.userId
+      );
+
+    res.setHeader(
+      "Content-Type",
+      "application/pdf"
+    );
+
+    res.setHeader(
+      "Content-Disposition",
+      'attachment; filename="result-summary.pdf"'
+    );
+
+    res.setHeader(
+      "Cache-Control",
+      "no-store"
+    );
+
+    res.send(pdf);
+
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function assessments(
   req,
   res,

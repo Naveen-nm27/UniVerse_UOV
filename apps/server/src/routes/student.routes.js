@@ -38,4 +38,9 @@ router.get(
   assessments
 );
 
+router.get(
+  "/downloads/result-summary",
+  downloadResults
+);
+
 export default router;
