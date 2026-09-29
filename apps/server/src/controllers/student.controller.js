@@ -10,6 +10,60 @@ import {
   getResultDetails
 } from "../services/student-result-details.service.js";
 
+import {
+  getStudentAssessments
+} from "../services/student-assessments.service.js";
+
+export async function assessments(
+  req,
+  res,
+  next
+) {
+
+  try {
+
+    const rows =
+      await getStudentAssessments(
+        req.auth.userId,
+        req.query.semesterId || null
+      );
+
+    const data = rows.map((row) => ({
+      assessmentId:
+        Number(row.assessmentId),
+
+      icaNumber:
+        Number(row.icaNumber),
+
+      title:
+        row.title ||
+        `ICA ${row.icaNumber}`,
+
+      grade:
+        row.grade,
+
+      module: {
+        id: Number(row.moduleId),
+        code: row.moduleCode,
+        title: row.moduleTitle
+      },
+
+      semester: {
+        id: Number(row.semesterId),
+        label:
+          `${row.academicYear} - ${row.semesterName}`
+      },
+
+      released: true
+    }));
+
+    res.json({ data });
+
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function resultDetails(
   req,
   res,

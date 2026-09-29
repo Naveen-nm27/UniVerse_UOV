@@ -33,4 +33,9 @@ router.get(
   resultDetails
 );
 
+router.get(
+  "/assessments",
+  assessments
+);
+
 export default router;
