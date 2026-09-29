@@ -1,5 +1,6 @@
 import express from "express";
 import userRoutes from "./routes/user.routes.js";
+import studentRoutes from "./routes/student.routes.js";
 
 const app = express();
 
@@ -25,6 +26,11 @@ app.use(express.json());
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
+
+app.use(
+  "/api/student",
+  studentRoutes
+);
 
 app.use("/api/users", userRoutes);
 
