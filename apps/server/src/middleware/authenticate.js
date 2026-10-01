@@ -1,129 +1,246 @@
 import jwt from "jsonwebtoken";
 import { AppDataSource } from "../data-source.js";
 
+const JWT_SECRET =
+  process.env.JWT_SECRET ||
+  "development-only-secret-change-me";
+
+/**
+ * Authentication middleware
+ *
+ * Reads the JWT from:
+ * Authorization: Bearer <token>
+ *
+ * Adds the authenticated user to:
+ * req.user
+ */
 export async function authenticate(req, res, next) {
   try {
-    const authorization = req.headers.authorization;
+    const authHeader = req.headers.authorization;
 
-    if (!authorization || !authorization.startsWith("Bearer ")) {
+    if (!authHeader) {
       return res.status(401).json({
-        error: {
-          code: "UNAUTHENTICATED",
-          message: "Authentication required.",
-        },
+        success: false,
+        message: "Authorization header is required.",
       });
     }
 
-    const token = authorization.substring(7).trim();
+    if (!authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid authorization format.",
+      });
+    }
+
+    const token = authHeader.substring(7).trim();
 
     if (!token) {
       return res.status(401).json({
-        error: {
-          code: "UNAUTHENTICATED",
-          message: "Authentication token is missing.",
-        },
+        success: false,
+        message: "Authentication token is required.",
       });
     }
 
-    if (!process.env.JWT_SECRET) {
-      throw new Error("JWT_SECRET is not configured.");
-    }
+    let decoded;
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    const userId = Number(decoded.sub);
-
-    if (!Number.isInteger(userId) || userId <= 0) {
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (error) {
       return res.status(401).json({
-        error: {
-          code: "INVALID_TOKEN",
-          message: "Invalid authentication token.",
-        },
+        success: false,
+        message: "Invalid or expired authentication token.",
       });
     }
 
-    const userRepository = AppDataSource.getRepository("User");
+    if (!decoded || !decoded.sub) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid authentication token.",
+      });
+    }
+
+    const userRepository =
+      AppDataSource.getRepository("User");
 
     const user = await userRepository.findOne({
       where: {
-        id: userId,
-      },
-
-      relations: {
-        role: true,
+        id: Number(decoded.sub),
       },
     });
 
     if (!user) {
       return res.status(401).json({
-        error: {
-          code: "USER_NOT_FOUND",
-          message: "User account not found.",
-        },
+        success: false,
+        message: "User account not found.",
       });
     }
 
-    if (user.active === false) {
-      return res.status(401).json({
-        error: {
-          code: "ACCOUNT_INACTIVE",
-          message: "Your account is inactive.",
-        },
+    if (user.isActive === false) {
+      return res.status(403).json({
+        success: false,
+        message: "Your account is inactive.",
       });
     }
 
     const roleCode =
-      user.role?.code ||
-      user.role?.roleCode ||
-      user.role_code ||
-      user.role;
+      String(user.role || "student").toUpperCase();
 
-    if (!roleCode) {
-      return res.status(403).json({
-        error: {
-          code: "ROLE_NOT_CONFIGURED",
-          message: "User role is not configured.",
-        },
-      });
-    }
-
-    /*
-     * Temporary permission handling.
-     *
-     * Once the V04 permission tables are mapped,
-     * replace this with a database query that calculates
-     * the user's effective permissions.
-     */
-    const permissions = Array.isArray(user.permissions)
-      ? user.permissions
-      : [];
-
-    req.auth = {
-      userId: user.id,
-      roleCode: String(roleCode).toUpperCase(),
-      permissions,
+    req.user = {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      fullName:
+        `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+      role: user.role || "student",
+      roleCode,
+      isActive: user.isActive,
     };
 
     next();
   } catch (error) {
-    if (error.name === "TokenExpiredError") {
-      return res.status(401).json({
-        error: {
-          code: "TOKEN_EXPIRED",
-          message: "Your session has expired.",
-        },
-      });
-    }
+    console.error(
+      "Authentication error:",
+      error
+    );
 
-    if (error.name === "JsonWebTokenError") {
-      return res.status(401).json({
-        error: {
-          code: "INVALID_TOKEN",
-          message: "Invalid authentication token.",
-        },
-      });
-    }
-
-    next(error);
+    return res.status(500).json({
+      success: false,
+      message: "Authentication failed.",
+    });
   }
+}
+
+/**
+ * Optional authentication middleware.
+ *
+ * If a valid token is supplied, req.user is populated.
+ * If no token is supplied, the request continues normally.
+ */
+export async function optionalAuthenticate(
+  req,
+  res,
+  next
+) {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (
+      !authHeader ||
+      !authHeader.startsWith("Bearer ")
+    ) {
+      return next();
+    }
+
+    const token = authHeader
+      .substring(7)
+      .trim();
+
+    if (!token) {
+      return next();
+    }
+
+    let decoded;
+
+    try {
+      decoded = jwt.verify(
+        token,
+        JWT_SECRET
+      );
+    } catch {
+      return next();
+    }
+
+    if (!decoded || !decoded.sub) {
+      return next();
+    }
+
+    const userRepository =
+      AppDataSource.getRepository("User");
+
+    const user = await userRepository.findOne({
+      where: {
+        id: Number(decoded.sub),
+      },
+    });
+
+    if (
+      user &&
+      user.isActive !== false
+    ) {
+      const roleCode =
+        String(
+          user.role || "student"
+        ).toUpperCase();
+
+      req.user = {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        fullName:
+          `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+        role: user.role || "student",
+        roleCode,
+        isActive: user.isActive,
+      };
+    }
+
+    next();
+  } catch (error) {
+    console.error(
+      "Optional authentication error:",
+      error
+    );
+
+    next();
+  }
+}
+
+/**
+ * Role authorization middleware.
+ *
+ * Example:
+ * router.get(
+ *   "/admin",
+ *   authenticate,
+ *   requireRole("ADMIN"),
+ *   controller
+ * );
+ */
+export function requireRole(...allowedRoles) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required.",
+      });
+    }
+
+    const userRole =
+      String(
+        req.user.roleCode ||
+        req.user.role ||
+        ""
+      ).toUpperCase();
+
+    const normalizedAllowedRoles =
+      allowedRoles.map((role) =>
+        String(role).toUpperCase()
+      );
+
+    if (
+      !normalizedAllowedRoles.includes(
+        userRole
+      )
+    ) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "You do not have permission to access this resource.",
+      });
+    }
+
+    next();
+  };
 }

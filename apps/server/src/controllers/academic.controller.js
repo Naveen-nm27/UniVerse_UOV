@@ -13,193 +13,196 @@ import {
   createModule,
   getHalls,
   createHall,
-} from "../services/ma-academic.service.js";
+} from "../services/academic.service.js";
 
-export async function listDepartments(req, res) {
+export async function listDepartments(req, res, next) {
   try {
     const data = await getDepartments();
 
-    res.status(200).json({ data });
-  } catch (err) {
-    res.status(500).json({
-      error: err.message || "Unable to load departments",
+    res.status(200).json({
+      data,
+      meta: {
+        count: data.length,
+      },
     });
+  } catch (error) {
+    next(error);
   }
 }
 
-export async function addDepartment(req, res) {
+export async function addDepartment(req, res, next) {
   try {
-    const data = await createDepartment(
-      req.body,
-      req.auth.userId
-    );
+    const data = await createDepartment(req.body);
 
-    res.status(201).json({ data });
-  } catch (err) {
-    res.status(400).json({
-      error: err.message || "Unable to create department",
+    res.status(201).json({
+      data,
     });
+  } catch (error) {
+    next(error);
   }
 }
 
-export async function listProgrammes(req, res) {
+export async function listProgrammes(req, res, next) {
   try {
     const data = await getProgrammes();
 
-    res.status(200).json({ data });
-  } catch (err) {
-    res.status(500).json({
-      error: err.message || "Unable to load programmes",
+    res.status(200).json({
+      data,
+      meta: {
+        count: data.length,
+      },
     });
+  } catch (error) {
+    next(error);
   }
 }
 
-export async function addProgramme(req, res) {
+export async function addProgramme(req, res, next) {
   try {
-    const data = await createProgramme(
-      req.body,
-      req.auth.userId
-    );
+    const data = await createProgramme(req.body);
 
-    res.status(201).json({ data });
-  } catch (err) {
-    res.status(400).json({
-      error: err.message || "Unable to create programme",
+    res.status(201).json({
+      data,
     });
+  } catch (error) {
+    next(error);
   }
 }
 
-export async function listBatches(req, res) {
+export async function listBatches(req, res, next) {
   try {
     const data = await getBatches();
 
-    res.status(200).json({ data });
-  } catch (err) {
-    res.status(500).json({
-      error: err.message || "Unable to load batches",
+    res.status(200).json({
+      data,
+      meta: {
+        count: data.length,
+      },
     });
+  } catch (error) {
+    next(error);
   }
 }
 
-export async function addBatch(req, res) {
+export async function addBatch(req, res, next) {
   try {
-    const data = await createBatch(
-      req.body,
-      req.auth.userId
-    );
+    const data = await createBatch(req.body);
 
-    res.status(201).json({ data });
-  } catch (err) {
-    res.status(400).json({
-      error: err.message || "Unable to create batch",
+    res.status(201).json({
+      data,
     });
+  } catch (error) {
+    next(error);
   }
 }
 
-export async function listCalendarSemesters(req, res) {
+export async function listCalendarSemesters(req, res, next) {
   try {
     const data = await getCalendarSemesters();
 
-    res.status(200).json({ data });
-  } catch (err) {
-    res.status(500).json({
-      error: err.message || "Unable to load semesters",
+    res.status(200).json({
+      data,
+      meta: {
+        count: data.length,
+      },
     });
+  } catch (error) {
+    next(error);
   }
 }
 
-export async function addCalendarSemester(req, res) {
+export async function addCalendarSemester(req, res, next) {
   try {
-    const data = await createCalendarSemester(
-      req.body,
-      req.auth.userId
-    );
+    const data =
+      await createCalendarSemester(req.body);
 
-    res.status(201).json({ data });
-  } catch (err) {
-    res.status(400).json({
-      error: err.message || "Unable to create semester",
+    res.status(201).json({
+      data,
     });
+  } catch (error) {
+    next(error);
   }
 }
 
-export async function listProgrammeSemesters(req, res) {
+export async function listProgrammeSemesters(req, res, next) {
   try {
-    const data = await getProgrammeSemesters();
+    const data =
+      await getProgrammeSemesters();
 
-    res.status(200).json({ data });
-  } catch (err) {
-    res.status(500).json({
-      error: err.message || "Unable to load programme semesters",
+    res.status(200).json({
+      data,
+      meta: {
+        count: data.length,
+      },
     });
+  } catch (error) {
+    next(error);
   }
 }
 
-export async function addProgrammeSemester(req, res) {
+export async function addProgrammeSemester(req, res, next) {
   try {
-    const data = await createProgrammeSemester(
-      req.body,
-      req.auth.userId
-    );
+    const data =
+      await createProgrammeSemester(req.body);
 
-    res.status(201).json({ data });
-  } catch (err) {
-    res.status(400).json({
-      error: err.message || "Unable to create programme semester",
+    res.status(201).json({
+      data,
     });
+  } catch (error) {
+    next(error);
   }
 }
 
-export async function listModules(req, res) {
+export async function listModules(req, res, next) {
   try {
     const data = await getModules();
 
-    res.status(200).json({ data });
-  } catch (err) {
-    res.status(500).json({
-      error: err.message || "Unable to load modules",
+    res.status(200).json({
+      data,
+      meta: {
+        count: data.length,
+      },
     });
+  } catch (error) {
+    next(error);
   }
 }
 
-export async function addModule(req, res) {
+export async function addModule(req, res, next) {
   try {
-    const data = await createModule(
-      req.body,
-      req.auth.userId
-    );
+    const data = await createModule(req.body);
 
-    res.status(201).json({ data });
-  } catch (err) {
-    res.status(400).json({
-      error: err.message || "Unable to create module",
+    res.status(201).json({
+      data,
     });
+  } catch (error) {
+    next(error);
   }
 }
 
-export async function listHalls(req, res) {
+export async function listHalls(req, res, next) {
   try {
     const data = await getHalls();
 
-    res.status(200).json({ data });
-  } catch (err) {
-    res.status(500).json({
-      error: err.message || "Unable to load halls",
+    res.status(200).json({
+      data,
+      meta: {
+        count: data.length,
+      },
     });
+  } catch (error) {
+    next(error);
   }
 }
 
-export async function addHall(req, res) {
+export async function addHall(req, res, next) {
   try {
-    const data = await createHall(
-      req.body,
-      req.auth.userId
-    );
+    const data = await createHall(req.body);
 
-    res.status(201).json({ data });
-  } catch (err) {
-    res.status(400).json({
-      error: err.message || "Unable to create hall",
+    res.status(201).json({
+      data,
     });
+  } catch (error) {
+    next(error);
   }
 }

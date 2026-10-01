@@ -1,27 +1,24 @@
 {
-  "name": "@universe/server",
+  "name": "universe-server",
   "version": "1.0.0",
   "private": true,
   "description": "UniVerse UOV API",
   "type": "module",
   "main": "src/server.js",
   "scripts": {
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
-    "@casl/ability": "^7.0.1",
-    "@universe/shared-permissions": "*",
-    "@universe/shared-types": "*",
-    "@universe/shared-validation": "*",
+    "ansis": "^4.4.0",
     "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
-    "mysql2": "^3.24.3",
+    "mysql2": "^3.15.3",
     "reflect-metadata": "^0.2.2",
+    "sql-highlight": "^6.1.0",
     "typeorm": "^0.3.27",
     "zod": "^4.5.4"
   },

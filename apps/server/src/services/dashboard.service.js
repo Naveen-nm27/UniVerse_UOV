@@ -8,10 +8,6 @@ export async function getMaDashboard(userId) {
     where: {
       id: userId,
     },
-
-    relations: {
-      role: true,
-    },
   });
 
   if (!user) {
@@ -25,11 +21,8 @@ export async function getMaDashboard(userId) {
     throw error;
   }
 
-  const roleCode =
-    user.role?.code ||
-    user.role?.roleCode ||
-    user.role_code ||
-    user.role;
+const roleCode =
+  String(user.role || "student").toUpperCase();
 
   return {
     profile: {
@@ -46,10 +39,6 @@ export async function getMaDashboard(userId) {
     },
 
     summary: {
-      /*
-       * These are placeholders until the V04
-       * entities/tables are connected.
-       */
       activeUsers: 0,
       todayLectureSessions: 0,
       resultsAwaitingAction: 0,
