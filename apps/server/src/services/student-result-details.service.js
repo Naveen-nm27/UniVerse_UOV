@@ -1,4 +1,6 @@
 import { AppDataSource } from "../data-source.js";
+import { getStudentContext } from "./student-context.service.js";
+import { getStudyPeriod } from "./student-academic-period.service.js";
 
 export async function getResultDetails(
   userId,
@@ -77,6 +79,7 @@ export async function getResultDetails(
   }
 
   const row = rows[0];
+  const student = await getStudentContext(userId);
 
   return {
     resultId: Number(row.resultId),
@@ -90,8 +93,7 @@ export async function getResultDetails(
 
     semester: {
       id: Number(row.semesterId),
-      label:
-        `${row.academicYear} - ${row.semesterName}`
+      ...getStudyPeriod(student, row.academicYear, row.semesterName)
     },
 
     attemptNumber:

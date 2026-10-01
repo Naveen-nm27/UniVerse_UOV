@@ -1,7 +1,9 @@
-import "dotenv/config";
+import dotenv from "dotenv";
 import { DataSource } from "typeorm";
 
-import User from "./entities/User.js";
+dotenv.config({ path: new URL("../.env", import.meta.url) });
+
+import { User } from "./entities/User.js";
 import Role from "./entities/Role.js";
 import Student from "./entities/Student.js";
 import Batch from "./entities/Batch.js";

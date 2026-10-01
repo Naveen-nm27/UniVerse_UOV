@@ -29,13 +29,28 @@ export async function registerUser(input) {
 export async function loginUser({ email, password }) {
   if (!email || !password) throw new Error("Email and password are required");
   const repo = AppDataSource.getRepository(User);
-  const user = await repo.findOneBy({ email: email.trim().toLowerCase() });
+  const user = await repo
+    .createQueryBuilder("user")
+    .addSelect("user.passwordHash")
+    .where("user.email = :email", { email: email.trim().toLowerCase() })
+    .andWhere("user.isActive = :isActive", { isActive: true })
+    .getOne();
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) throw new Error("Incorrect email or password");
+  if (!process.env.JWT_SECRET) throw new Error("JWT_SECRET is not configured");
 
   const token = jwt.sign(
-    { sub: String(user.id), role: user.role },
-    process.env.JWT_SECRET || "development-only-secret-change-me",
+    { userId: user.userId, role: user.roleCode },
+    process.env.JWT_SECRET,
     { expiresIn: "8h" },
   );
-  return { token, user: { id: user.id, email: user.email, fullName: user.fullName, role: user.role } };
+  await repo.update(user.userId, { lastLoginAt: new Date() });
+  return {
+    token,
+    user: {
+      id: user.userId,
+      email: user.email,
+      fullName: user.name,
+      role: user.roleCode,
+    },
+  };
 }

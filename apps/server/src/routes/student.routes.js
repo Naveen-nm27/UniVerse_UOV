@@ -7,7 +7,11 @@ import { requireRole }
   from "../middleware/require-role.js";
 
 import {
-  dashboard
+  dashboard,
+  results,
+  resultDetails,
+  assessments,
+  downloadResults
 } from "../controllers/student.controller.js";
 
 const router = Router();

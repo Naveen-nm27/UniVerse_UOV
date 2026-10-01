@@ -16,10 +16,11 @@ export async function authenticate(req, res, next) {
 
     const token = header.substring(7);
 
-    const payload = jwt.verify(
-      token,
-      process.env.JWT_SECRET
-    );
+    if (!process.env.JWT_SECRET) {
+      throw new Error("JWT_SECRET is not configured");
+    }
+
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
 
     if (!payload.userId) {
       return res.status(401).json({

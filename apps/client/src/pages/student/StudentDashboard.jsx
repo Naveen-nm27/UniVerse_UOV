@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { downloadStudentResults, getStudentAssessments, getStudentDashboard, getStudentResults } from "../../api/users";
 import "./StudentDashboard.css";
 
 const navItems = [
@@ -32,7 +34,7 @@ const assessmentRows = [
 
 const progressSeries = [62, 68, 76, 74, 82, 88, 90];
 
-export default function StudentDashboard() {
+function LegacyStudentDashboard() {
   return (
     <div className="student-dashboard">
       <aside className="student-sidebar" aria-label="Student navigation">
@@ -242,3 +244,132 @@ export default function StudentDashboard() {
     </div>
   );
 }
+
+const studentNavigation = [["Overview", "overview"], ["Results", "results"], ["Assessments", "assessments"], ["Progress", "progress"], ["Downloads", "downloads"]];
+
+export default function StudentDashboard() {
+  const [dashboard, setDashboard] = useState(null);
+  const [results, setResults] = useState([]);
+  const [assessments, setAssessments] = useState([]);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
+  const [semesterId, setSemesterId] = useState("");
+
+  useEffect(() => {
+    Promise.all([getStudentDashboard(semesterId), getStudentResults(semesterId), getStudentAssessments(semesterId)])
+      .then(([summary, resultRows, assessmentRows]) => { setDashboard(summary); setResults(resultRows || []); setAssessments(assessmentRows || []); })
+      .catch((requestError) => setError(requestError.message))
+      .finally(() => setLoading(false));
+  }, [semesterId]);
+
+  const profile = dashboard?.profile;
+  const summary = dashboard?.summary || {};
+  const initials = (profile?.fullName || "Student").split(" ").map((part) => part[0]).slice(0, 2).join("").toUpperCase();
+  const completed = summary.completedCredits;
+  const required = summary.requiredCredits;
+  const percentage = completed != null && required ? Math.round((completed / required) * 100) : null;
+  async function download() {
+    setDownloading(true); setError("");
+    try { const blob = await downloadStudentResults(); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = "result-summary.pdf"; link.click(); URL.revokeObjectURL(url); }
+    catch (downloadError) { setError(downloadError.message); } finally { setDownloading(false); }
+  }
+
+  return <div className="student-shell">
+    <aside className="student-sidebar" aria-label="Student navigation">
+      <a className="student-brand" href="/student"><span>U</span>UniVerse</a><p className="student-role">Student portal</p>
+      <nav className="student-nav">{studentNavigation.map(([label, id], index) => <a key={id} className={index === 0 ? "is-active" : ""} href={`#${id}`}>{label}</a>)}</nav>
+      <div className="student-account"><b>{initials}</b><div><strong>{profile?.fullName || "Student"}</strong><small>{profile?.registrationNumber || "Loading profile"}</small></div></div>
+      <button className="student-signout" type="button" onClick={() => { localStorage.removeItem("universe_session"); sessionStorage.removeItem("universe_session"); window.location.assign("/"); }}>Sign out</button>
+    </aside>
+    <main className="student-main">
+      <section className="student-intro" id="overview"><p className="student-eyebrow">Student workspace</p><h1>{loading ? "Loading your academic record" : `Welcome, ${firstName(profile?.fullName)}`}</h1><p>{profile?.programme?.name || "Your programme information will appear here."}{profile?.currentContext ? ` · ${profile.currentContext}` : ""}</p>{profile?.academicYear && <p className="student-intake-year">Academic year of enrolment: {profile.academicYear}</p>}<label className="student-semester">View study period <select value={semesterId} onChange={(event) => setSemesterId(event.target.value)}><option value="">All published periods</option>{(dashboard?.semesters || []).map((semester) => <option key={semester.id} value={semester.id}>{semester.label}</option>)}</select></label></section>
+      {error && <div className="student-error" role="alert">{error}</div>}
+      <section className="student-summary"><StudentMetric label="Current GPA" value={studentNumber(summary.currentGpa)} detail={summary.currentGpaLabel || "Current published semester"} /><StudentMetric label="CGPA" value={studentNumber(summary.cgpa)} detail={summary.calculatedThrough || "Published results in view"} /><StudentMetric label="Core credits" value={completed == null ? "—" : required == null ? completed : `${completed} / ${required}`} detail={semesterId ? "Selected semester" : "Published results"} /><StudentMetric label="Published results" value={summary.latestPublishedResultCount ?? 0} detail="Available to view" /></section>
+      <section className="student-grid" id="progress"><article className="student-panel"><StudentTitle eyebrow="Batch performance" title="Grades by subject" /><p className="student-panel-description">Open a subject to see the published grades in your batch.</p><StudentBatchChart rows={dashboard?.batchPerformance || []} /></article><article className="student-panel student-credit"><StudentTitle eyebrow="Programme progress" title={required ? "Core credit completion" : "Core credits in view"} /><strong>{percentage == null ? `${completed ?? "—"} credits` : `${percentage}%`}</strong>{required && <div className="student-progress"><span style={{ width: `${percentage || 0}%` }} /></div>}<p>Completed <b>{completed ?? "—"}</b>{required && <span>Remaining <b>{Math.max(0, required - completed)}</b></span>}</p></article></section>
+      <section className="student-panel" id="results"><div className="student-panel-head"><StudentTitle eyebrow="Published results" title="Results by study year" /><a href="#downloads">Download summary</a></div><StudentResults rows={results} loading={loading} /></section>
+      <section className="student-panel" id="assessments"><StudentTitle eyebrow="Assessment marks" title="Released assessments" /><div className="student-assessments">{assessments.slice(0, 6).map((item) => <div className="student-assessment" key={item.assessmentId}><div><strong>{item.module.code}</strong><span>{item.title}</span></div><b>{item.grade || "—"}</b><small>{item.semester.label}</small></div>)}{!loading && !assessments.length && <p className="student-empty">No released assessments are available yet.</p>}</div></section>
+      <section className="student-download" id="downloads"><div><p className="student-eyebrow">Downloads</p><h2>Official result summary</h2><p>Download a PDF of your published results.</p></div><button type="button" disabled={downloading} onClick={download}>{downloading ? "Preparing download…" : "Download PDF"}</button></section>
+    </main>
+  </div>;
+}
+
+function StudentMetric({ label, value, detail }) { return <article className="student-metric"><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>; }
+function StudentTitle({ eyebrow, title }) { return <div><p className="student-eyebrow">{eyebrow}</p><h2>{title}</h2></div>; }
+function StudentResults({ rows, loading }) {
+  if (!rows.length) return <p className="student-empty">{loading ? "Loading results…" : "No published results are available yet."}</p>;
+
+  const byYear = new Map();
+  const sortedRows = [...rows].sort((a, b) =>
+    (a.semester.studyYear ?? Infinity) - (b.semester.studyYear ?? Infinity) ||
+    (a.semester.semesterNumber ?? Infinity) - (b.semester.semesterNumber ?? Infinity) ||
+    a.module.code.localeCompare(b.module.code) ||
+    a.attemptNumber - b.attemptNumber
+  );
+
+  for (const row of sortedRows) {
+    const yearKey = row.semester.studyYear ?? "other";
+    if (!byYear.has(yearKey)) byYear.set(yearKey, new Map());
+    const semesters = byYear.get(yearKey);
+    if (!semesters.has(row.semester.id)) {
+      semesters.set(row.semester.id, { label: row.semester.label, rows: [] });
+    }
+    semesters.get(row.semester.id).rows.push(row);
+  }
+
+  return <div className="student-results-by-year">{[...byYear].map(([year, semesters]) =>
+    <section className="student-result-year" key={year}>
+      <h3>{year === "other" ? "Other periods" : `Year ${String(year).padStart(2, "0")}`}</h3>
+      {[...semesters].map(([id, semester]) => <div className="student-result-semester" key={id}>
+        <h4>{semester.label}</h4>
+        <div className="student-table"><table><thead><tr><th>Module</th><th>Grade</th><th>Credits</th><th>Attempt</th></tr></thead>
+          <tbody>{semester.rows.map((row) => <tr key={row.resultId}><td><strong>{row.module.code}</strong><span>{row.module.title}</span></td><td><b>{row.finalGrade}</b></td><td>{row.module.credits}</td><td>{row.attemptNumber}</td></tr>)}</tbody>
+        </table></div>
+      </div>)}
+    </section>
+  )}</div>;
+}
+function StudentTrend({ trend }) { if (!trend.length) return <div className="student-chart-empty">Performance trend will appear after GPA values are published.</div>; const values = trend.map((point) => Number(point.value)); const low = Math.min(...values); const spread = Math.max(...values) - low || 1; const points = values.map((value, index) => `${20 + index * (400 / Math.max(1, values.length - 1))},${140 - ((value - low) / spread) * 100}`).join(" "); return <div className="student-chart"><svg viewBox="0 0 440 165"><line x1="20" y1="20" x2="420" y2="20" /><line x1="20" y1="70" x2="420" y2="70" /><line x1="20" y1="120" x2="420" y2="120" /><polyline points={points} />{points.split(" ").map((point, index) => { const [cx, cy] = point.split(","); return <circle key={index} cx={cx} cy={cy} r="4" />; })}</svg><div>{trend.map((point, index) => <span key={index}>{point.label}</span>)}</div></div>; }
+function StudentBatchChart({ rows }) {
+  if (!rows.length) return <div className="student-chart-empty">Batch grades will appear when published results are available.</div>;
+
+  return <div className="student-subject-grid">{rows.map((subject) => {
+    const largestCount = Math.max(1, ...subject.gradeCounts.map(({ count }) => count));
+    const tickStep = Math.max(1, Math.ceil(largestCount / 4));
+    const axisMax = Math.ceil(largestCount / tickStep) * tickStep;
+    const ticks = Array.from({ length: axisMax / tickStep + 1 }, (_, index) => axisMax - index * tickStep);
+    const accessibleCounts = subject.gradeCounts.map(({ grade, count }) => `${grade}: ${count}`).join(", ");
+
+    return <details className="student-subject-card" key={subject.moduleCode}>
+      <summary>
+        <span className="student-subject-code">{subject.moduleCode}</span>
+        <strong>{subject.moduleTitle}</strong>
+        <small>{subject.studentCount} student{subject.studentCount === 1 ? "" : "s"} with a published result</small>
+        <span className="student-subject-toggle" aria-hidden="true">+</span>
+      </summary>
+      <div className="student-grade-chart" role="img" aria-label={`${subject.moduleTitle} grade counts: ${accessibleCounts}. Latest published attempt counted for each student.`}>
+        <div className="student-grade-figure" style={{ minWidth: `${Math.max(190, subject.gradeCounts.length * 38 + 32)}px` }}>
+          <span className="student-grade-y-title">Count</span>
+          <div className="student-grade-plot">
+            <div className="student-grade-yaxis">{ticks.map((tick) => <span key={tick}>{tick}</span>)}</div>
+            <div className="student-grade-area">
+              <div className="student-grade-grid" aria-hidden="true">{ticks.map((tick) => <span key={tick} />)}</div>
+              <div className="student-grade-bars">{subject.gradeCounts.map(({ grade, count }) => {
+                const height = `${(count / axisMax) * 100}%`;
+                return <div className="student-grade-column" key={grade}>
+                  <strong style={{ bottom: `calc(${height} + 4px)` }}>{count}</strong>
+                  <span style={{ height }} />
+                </div>;
+              })}</div>
+            </div>
+          </div>
+          <div className="student-grade-xaxis">{subject.gradeCounts.map(({ grade }) => <b key={grade}>{grade}</b>)}</div>
+          <span className="student-grade-x-title">Grade</span>
+        </div>
+        <p>Latest published attempt counted once per student.</p>
+      </div>
+    </details>;
+  })}</div>;
+}
+function studentNumber(value) { return value == null ? "—" : Number(value).toFixed(2); }
+function firstName(value) { return (value || "Student").split(" ")[0]; }

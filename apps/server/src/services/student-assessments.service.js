@@ -21,7 +21,8 @@ export async function getStudentAssessments(
 
       sem.semester_id AS semesterId,
       sem.semester_name AS semesterName,
-      sem.academic_year AS academicYear
+      sem.academic_year AS academicYear,
+      sem.start_date AS semesterStartDate
 
     FROM ICA_GRADES ig
 
@@ -61,7 +62,7 @@ export async function getStudentAssessments(
 
   sql += `
     ORDER BY
-      sem.start_date DESC,
+      semesterStartDate DESC,
       m.module_code,
       ica.ica_number
   `;

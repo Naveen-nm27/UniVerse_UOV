@@ -18,6 +18,8 @@ import {
 import {
   generateResultPdf
 } from "../services/result-download.service.js";
+import { getStudentContext } from "../services/student-context.service.js";
+import { getStudyPeriod } from "../services/student-academic-period.service.js";
 
 export async function downloadResults(
   req,
@@ -62,6 +64,8 @@ export async function assessments(
 
   try {
 
+    const student = await getStudentContext(req.auth.userId);
+
     const rows =
       await getStudentAssessments(
         req.auth.userId,
@@ -90,8 +94,7 @@ export async function assessments(
 
       semester: {
         id: Number(row.semesterId),
-        label:
-          `${row.academicYear} - ${row.semesterName}`
+        ...getStudyPeriod(student, row.academicYear, row.semesterName)
       },
 
       released: true
@@ -129,6 +132,8 @@ export async function results(req, res, next) {
 
   try {
 
+    const student = await getStudentContext(req.auth.userId);
+
     const semesterId =
       req.query.semesterId || null;
 
@@ -150,8 +155,7 @@ export async function results(req, res, next) {
 
       semester: {
         id: Number(row.semesterId),
-        label:
-          `${row.academicYear} - ${row.semesterName}`
+        ...getStudyPeriod(student, row.academicYear, row.semesterName)
       },
 
       attemptNumber:
@@ -186,7 +190,8 @@ export async function dashboard(req, res, next) {
 
     const data =
       await getStudentDashboard(
-        req.auth.userId
+        req.auth.userId,
+        req.query.semesterId || null
       );
 
     res.json({

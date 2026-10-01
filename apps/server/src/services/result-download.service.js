@@ -2,10 +2,14 @@ import PDFDocument from "pdfkit";
 
 import { AppDataSource }
   from "../data-source.js";
+import { getStudentContext } from "./student-context.service.js";
+import { getIntakeAcademicYear, getStudyPeriod } from "./student-academic-period.service.js";
 
 export async function generateResultPdf(
   userId
 ) {
+
+  const student = await getStudentContext(userId);
 
   const rows =
     await AppDataSource.query(
@@ -86,6 +90,10 @@ export async function generateResultPdf(
         `Generated: ${new Date().toLocaleString()}`
       );
 
+    if (getIntakeAcademicYear(student)) {
+      doc.text(`Intake academic year: ${getIntakeAcademicYear(student)}`);
+    }
+
     doc.moveDown();
 
     for (const row of rows) {
@@ -97,7 +105,7 @@ export async function generateResultPdf(
 
       doc.fontSize(10)
         .text(
-          `Semester: ${row.academicYear} - ${row.semesterName}`
+          `Study period: ${getStudyPeriod(student, row.academicYear, row.semesterName).label}`
         );
 
       doc.text(

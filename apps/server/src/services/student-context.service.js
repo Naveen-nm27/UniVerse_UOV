@@ -14,8 +14,10 @@ export async function getStudentContext(userId) {
       s.current_semester AS currentSemester,
 
       b.batch_name AS batchName,
+      b.start_date AS batchStartDate,
 
       sp.programme_id AS programmeId,
+      sp.start_date AS programmeStartDate,
       p.programme_code AS programmeCode,
       p.programme_name AS programmeName
 
