@@ -1,12 +1,9 @@
 import { useState } from "react";
 import { loginUser } from "../api/users";
 
-const dashboardByRole = {
-  student: "/student/dashboard",
-  lecturer: "/lecturer/dashboard",
-  administrator: "/admin/dashboard",
-  management_assistant: "/management-assistant/dashboard",
-};
+import { saveSession } from "../api/client";
+
+const dashboardByRole = { STUDENT: "/student", MA: "/ma", LECTURER: "/lecturer", HOD: "/hod", DEAN: "/dean", ADMIN: "/admin" };
 
 export default function LoginForm() {
   const [form, setForm] = useState({ email: "", password: "", remember: false });
@@ -34,8 +31,7 @@ export default function LoginForm() {
       const session = await loginUser(form);
       const destination = dashboardByRole[session.user.role];
       if (!destination) throw new Error("Your account role is not supported yet.");
-      const storage = form.remember ? localStorage : sessionStorage;
-      storage.setItem("universe_session", JSON.stringify(session));
+      saveSession(session, form.remember);
       window.location.assign(destination);
     } catch (error) {
       setStatus("error");

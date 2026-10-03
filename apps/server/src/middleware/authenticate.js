@@ -1,246 +1,31 @@
 import jwt from "jsonwebtoken";
 import { AppDataSource } from "../data-source.js";
-
-const JWT_SECRET =
-  process.env.JWT_SECRET ||
-  "development-only-secret-change-me";
-
-/**
- * Authentication middleware
- *
- * Reads the JWT from:
- * Authorization: Bearer <token>
- *
- * Adds the authenticated user to:
- * req.user
- */
+import { getJwtSecret, sessionUser } from "../config/auth.js";
+import { ApiError } from "../utils/api-error.js";
 export async function authenticate(req, res, next) {
   try {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader) {
-      return res.status(401).json({
-        success: false,
-        message: "Authorization header is required.",
-      });
-    }
-
-    if (!authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid authorization format.",
-      });
-    }
-
-    const token = authHeader.substring(7).trim();
-
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        message: "Authentication token is required.",
-      });
-    }
-
-    let decoded;
-
-    try {
-      decoded = jwt.verify(token, JWT_SECRET);
-    } catch (error) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid or expired authentication token.",
-      });
-    }
-
-    if (!decoded || !decoded.sub) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid authentication token.",
-      });
-    }
-
-    const userRepository =
-      AppDataSource.getRepository("User");
-
-    const user = await userRepository.findOne({
-      where: {
-        id: Number(decoded.sub),
-      },
-    });
-
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: "User account not found.",
-      });
-    }
-
-    if (user.isActive === false) {
-      return res.status(403).json({
-        success: false,
-        message: "Your account is inactive.",
-      });
-    }
-
-    const roleCode =
-      String(user.role || "student").toUpperCase();
-
-    req.user = {
-      id: user.id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      fullName:
-        `${user.firstName || ""} ${user.lastName || ""}`.trim(),
-      role: user.role || "student",
-      roleCode,
-      isActive: user.isActive,
-    };
-
+    const match = /^Bearer\s+(\S+)$/i.exec(req.headers.authorization || "");
+    if (!match) throw new ApiError(401, "UNAUTHENTICATED", "Please sign in to continue.");
+    let payload;
+    const secret = getJwtSecret();
+    try { payload = jwt.verify(match[1], secret, { algorithms: ["HS256"] }); }
+    catch { throw new ApiError(401, "INVALID_SESSION", "Your session has expired. Please sign in again."); }
+    const subject = payload.sub ?? payload.userId; // Accept existing student tokens.
+    const userId = Number(subject);
+    if (!/^\d+$/.test(String(subject)) || !Number.isSafeInteger(userId) || userId <= 0)
+      throw new ApiError(401, "INVALID_SESSION", "Please sign in again.");
+    const user = await AppDataSource.getRepository("User").findOneBy({ userId, isActive: true });
+    if (!user) throw new ApiError(401, "INVALID_SESSION", "Your session is no longer active.");
+    if (user.mustChangePassword && !["/api/users/password", "/api/users/me"].includes(req.originalUrl.split("?")[0]))
+      throw new ApiError(403, "PASSWORD_CHANGE_REQUIRED", "Change your temporary password before opening your workspace.");
+    req.auth = { userId: user.userId, role: user.roleCode, roleCode: user.roleCode };
+    req.user = sessionUser(user);
+    res.setHeader("Cache-Control", "private, no-store");
     next();
-  } catch (error) {
-    console.error(
-      "Authentication error:",
-      error
-    );
-
-    return res.status(500).json({
-      success: false,
-      message: "Authentication failed.",
-    });
-  }
+  } catch (error) { next(error); }
 }
-
-/**
- * Optional authentication middleware.
- *
- * If a valid token is supplied, req.user is populated.
- * If no token is supplied, the request continues normally.
- */
-export async function optionalAuthenticate(
-  req,
-  res,
-  next
-) {
-  try {
-    const authHeader = req.headers.authorization;
-
-    if (
-      !authHeader ||
-      !authHeader.startsWith("Bearer ")
-    ) {
-      return next();
-    }
-
-    const token = authHeader
-      .substring(7)
-      .trim();
-
-    if (!token) {
-      return next();
-    }
-
-    let decoded;
-
-    try {
-      decoded = jwt.verify(
-        token,
-        JWT_SECRET
-      );
-    } catch {
-      return next();
-    }
-
-    if (!decoded || !decoded.sub) {
-      return next();
-    }
-
-    const userRepository =
-      AppDataSource.getRepository("User");
-
-    const user = await userRepository.findOne({
-      where: {
-        id: Number(decoded.sub),
-      },
-    });
-
-    if (
-      user &&
-      user.isActive !== false
-    ) {
-      const roleCode =
-        String(
-          user.role || "student"
-        ).toUpperCase();
-
-      req.user = {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        fullName:
-          `${user.firstName || ""} ${user.lastName || ""}`.trim(),
-        role: user.role || "student",
-        roleCode,
-        isActive: user.isActive,
-      };
-    }
-
-    next();
-  } catch (error) {
-    console.error(
-      "Optional authentication error:",
-      error
-    );
-
-    next();
-  }
+export function optionalAuthenticate(req, res, next) {
+  if (!req.headers.authorization) return next();
+  return authenticate(req, res, next);
 }
-
-/**
- * Role authorization middleware.
- *
- * Example:
- * router.get(
- *   "/admin",
- *   authenticate,
- *   requireRole("ADMIN"),
- *   controller
- * );
- */
-export function requireRole(...allowedRoles) {
-  return (req, res, next) => {
-    if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        message: "Authentication required.",
-      });
-    }
-
-    const userRole =
-      String(
-        req.user.roleCode ||
-        req.user.role ||
-        ""
-      ).toUpperCase();
-
-    const normalizedAllowedRoles =
-      allowedRoles.map((role) =>
-        String(role).toUpperCase()
-      );
-
-    if (
-      !normalizedAllowedRoles.includes(
-        userRole
-      )
-    ) {
-      return res.status(403).json({
-        success: false,
-        message:
-          "You do not have permission to access this resource.",
-      });
-    }
-
-    next();
-  };
-}
+export { requireRole } from "./require-role.js";

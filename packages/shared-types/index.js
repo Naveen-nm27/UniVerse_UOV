@@ -1,59 +1,14 @@
+/** @typedef {"STUDENT" | "LECTURER" | "HOD" | "DEAN" | "MA" | "ADMIN"} UserRole */
 /**
- * @typedef {"student" | "lecturer" | "administrator" | "management_assistant"} UserRole
- */
-
-/**
- * @typedef {Object} BaseUser
- * @property {string} id
+ * @typedef {Object} User
+ * @property {number} id
  * @property {string} email
  * @property {string} fullName
- * @property {string} passwordHash
- * @property {boolean} isActive
- * @property {Date} createdAt
- * @property {Date} updatedAt
+ * @property {UserRole} role
+ * @property {string} dashboardPath
+ * @property {boolean} mustChangePassword
  */
-
-/**
- * @typedef {BaseUser & {
- *   role: "student",
- *   studentNumber: string,
- *   programmeId: string,
- *   batchId: string
- * }} Student
- */
-
-/**
- * @typedef {BaseUser & {
- *   role: "lecturer",
- *   departmentId: string,
- *   isHOD: boolean
- * }} Lecturer
- */
-
-/**
- * @typedef {BaseUser & { role: "administrator" }} Administrator
- */
-
-/**
- * @typedef {BaseUser & { role: "management_assistant" }} ManagementAssistant
- */
-
-/**
- * @typedef {Student | Lecturer | Administrator | ManagementAssistant} User
- */
-
-export function isStudent(user) {
-  return user?.role === "student";
-}
-
-export function isLecturer(user) {
-  return user?.role === "lecturer";
-}
-
-export function isAdministrator(user) {
-  return user?.role === "administrator";
-}
-
-export function isManagementAssistant(user) {
-  return user?.role === "management_assistant";
-}
+export function isStudent(user) { return user?.role === "STUDENT"; }
+export function isLecturer(user) { return ["LECTURER", "HOD"].includes(user?.role); }
+export function isAdministrator(user) { return user?.role === "ADMIN"; }
+export function isManagementAssistant(user) { return user?.role === "MA"; }

@@ -6,8 +6,12 @@
   "type": "module",
   "main": "src/server.js",
   "scripts": {
-    "dev": "nodemon src/server.js",
-    "start": "node src/server.js"
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "test": "node --test",
+    "create:ma": "node scripts/create-ma.js",
+    "test:browser": "node scripts/browser-smoke.js",
+    "db:repair-ids": "node scripts/repair-generated-ids.js"
   },
   "dependencies": {
     "ansis": "^4.4.0",
@@ -19,10 +23,8 @@
     "mysql2": "^3.15.3",
     "reflect-metadata": "^0.2.2",
     "sql-highlight": "^6.1.0",
-    "typeorm": "^0.3.27",
-    "zod": "^4.5.4"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.14"
+    "typeorm": "^0.3.31",
+    "zod": "^4.5.4",
+    "pdfkit": "^0.17.2"
   }
 }

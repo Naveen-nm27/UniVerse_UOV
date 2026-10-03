@@ -1,0 +1,16 @@
+import { Router } from "express";
+import { z } from "zod";
+import { authenticate } from "../middleware/authenticate.js";
+import { requireRole } from "../middleware/require-role.js";
+import { validate } from "../middleware/validate.js";
+import { positiveId } from "@universe/shared-validation";
+import { dashboard, results, resultDetails, assessments, downloadResults } from "../controllers/student.controller.js";
+const router = Router();
+const semesterQuery = z.object({ semesterId: positiveId.optional() }).strict();
+router.use(authenticate, requireRole("STUDENT"));
+router.get("/dashboard", validate(semesterQuery, "query"), dashboard);
+router.get("/results", validate(semesterQuery, "query"), results);
+router.get("/results/:resultId", validate(z.object({ resultId: positiveId }).strict(), "params"), resultDetails);
+router.get("/assessments", validate(semesterQuery, "query"), assessments);
+router.get("/downloads/result-summary", validate(semesterQuery, "query"), downloadResults);
+export default router;

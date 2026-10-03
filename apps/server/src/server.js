@@ -1,3 +1,4 @@
+import { getJwtSecret } from "./config/auth.js";
 import { AppDataSource } from "./data-source.js";
 
 import app from "./app.js";
@@ -7,6 +8,7 @@ const PORT =
 
 async function startServer() {
   try {
+    getJwtSecret();
     await AppDataSource.initialize();
 
     console.log(

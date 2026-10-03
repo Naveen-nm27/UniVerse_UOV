@@ -32,6 +32,6 @@
   "dependencies": {
     "ansis": "^4.4.0",
     "sql-highlight": "^6.1.0",
-    "typeorm": "^0.3.27"
+    "typeorm": "^0.3.31"
   }
 }
