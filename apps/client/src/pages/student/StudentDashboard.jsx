@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { downloadStudentResults, getStudentAssessments, getStudentDashboard, getStudentResults } from "../../api/users";
+import { downloadStudentResults, getStudentAssessments, getStudentDashboard, getStudentResults, getStudentResultDetails } from "../../api/users";
 import "./StudentDashboard.css";
 
 const navItems = [
@@ -322,14 +322,67 @@ function StudentResults({ rows, loading }) {
       <h3>{year === "other" ? "Other periods" : `Year ${String(year).padStart(2, "0")}`}</h3>
       {[...semesters].map(([id, semester]) => <div className="student-result-semester" key={id}>
         <h4>{semester.label}</h4>
-        <div className="student-table"><table><thead><tr><th>Module</th><th>Grade</th><th>Credits</th><th>Attempt</th></tr></thead>
-          <tbody>{semester.rows.map((row) => <tr key={row.resultId}><td><strong>{row.module.code}</strong><span>{row.module.title}</span></td><td><b>{row.finalGrade}</b></td><td>{row.module.credits}</td><td>{row.attemptNumber}</td></tr>)}</tbody>
-        </table></div>
+        <div className="student-result-subjects">{[...new Map(semester.rows.map((row) => [row.module.id, row])).values()].map((row) => <StudentResultSubject key={row.module.id} row={row} />)}</div>
       </div>)}
     </section>
   )}</div>;
 }
 function StudentTrend({ trend }) { if (!trend.length) return <div className="student-chart-empty">Performance trend will appear after GPA values are published.</div>; const values = trend.map((point) => Number(point.value)); const low = Math.min(...values); const spread = Math.max(...values) - low || 1; const points = values.map((value, index) => `${20 + index * (400 / Math.max(1, values.length - 1))},${140 - ((value - low) / spread) * 100}`).join(" "); return <div className="student-chart"><svg viewBox="0 0 440 165"><line x1="20" y1="20" x2="420" y2="20" /><line x1="20" y1="70" x2="420" y2="70" /><line x1="20" y1="120" x2="420" y2="120" /><polyline points={points} />{points.split(" ").map((point, index) => { const [cx, cy] = point.split(","); return <circle key={index} cx={cx} cy={cy} r="4" />; })}</svg><div>{trend.map((point, index) => <span key={index}>{point.label}</span>)}</div></div>; }
+function StudentResultSubject({ row }) {
+  const [open, setOpen] = useState(false);
+  const [details, setDetails] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const panelId = `result-details-${row.resultId}`;
+  async function loadDetails() {
+    setLoading(true); setError("");
+    try { setDetails(await getStudentResultDetails(row.resultId)); }
+    catch (requestError) { setError(requestError.message); }
+    finally { setLoading(false); }
+  }
+  function toggle() {
+    setOpen(!open);
+    if (!open && !details && !loading) loadDetails();
+  }
+  return <article className="student-result-subject">
+    <button type="button" className="student-result-subject-heading" aria-expanded={open} aria-controls={panelId} onClick={toggle}>
+      <span className="student-result-subject-code">{row.module.code}</span>
+      <strong>{row.module.title}</strong>
+      <span className="student-result-subject-toggle" aria-hidden="true">{open ? "−" : "+"}</span>
+    </button>
+    <section hidden={!open} id={panelId} className="student-attempt-history" aria-label={`${row.module.code} attempt history`} aria-busy={loading}>
+      <p className="student-result-credits">Module credits: {row.module.credits}</p>
+      <h4>{row.module.code} · All attempts</h4>
+      {loading && <p role="status">Loading attempt details…</p>}
+      {error && <div role="alert"><p>{error}</p><button type="button" className="student-details-button" onClick={loadDetails}>Try again</button></div>}
+      {details && !loading && !error && <>
+        {!details.attemptHistory?.length && <p>No attempt history is available.</p>}
+        {(details.attemptHistory || []).map((attempt) => <article className="student-attempt-card" key={`${attempt.enrollmentId}-${attempt.resultId ?? "pending"}`}>
+          <h5>Attempt {attempt.attemptNumber}{attempt.isCurrent ? " · Current" : ""}</h5>
+          <dl>
+            <div><dt>Study period</dt><dd>{attempt.semester.label} · {attempt.semester.academicYear}</dd></div>
+            <div><dt>Enrollment status</dt><dd>{attempt.enrollmentStatus}</dd></div>
+            <div><dt>Enrolled</dt><dd>{attemptDate(attempt.enrolledAt)}</dd></div>
+            <div><dt>Result</dt><dd>{attempt.resultId == null ? "Awaiting publication" : "Published"}</dd></div>
+            <div><dt>Final grade</dt><dd>{attempt.finalGrade ?? "—"}</dd></div>
+            <div><dt>Grade point</dt><dd>{studentNumber(attempt.gradePoint)}</dd></div>
+            <div><dt>Exam</dt><dd>{attempt.examType ?? "—"}{attempt.isResit ? " · Resit" : ""}</dd></div>
+            <div><dt>Exam date</dt><dd>{attemptDate(attempt.examDate)}</dd></div>
+            <div><dt>Exam grade</dt><dd>{attempt.examGrade ?? "—"}</dd></div>
+            <div><dt>Published</dt><dd>{attemptDate(attempt.publishedAt)}</dd></div>
+          </dl>
+          <h6>ICA assessments</h6>
+          {attempt.assessments.length ? <ul>{attempt.assessments.map((assessment) => <li key={assessment.assessmentId}>{assessment.title}: <b>{assessment.grade ?? "—"}</b></li>)}</ul> : <p>No released assessments are available for this attempt.</p>}
+        </article>)}
+      </>}
+    </section>
+  </article>;
+}
+function attemptDate(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleDateString("en-GB");
+}
 function StudentBatchChart({ rows }) {
   if (!rows.length) return <div className="student-chart-empty">Batch grades will appear when published results are available.</div>;
 

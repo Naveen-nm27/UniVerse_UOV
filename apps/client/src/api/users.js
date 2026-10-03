@@ -39,6 +39,10 @@ export function getStudentResults(semesterId) {
   return studentRequest(`/results${semesterId ? `?semesterId=${semesterId}` : ""}`);
 }
 
+export function getStudentResultDetails(resultId) {
+  return studentRequest(`/results/${encodeURIComponent(resultId)}`);
+}
+
 export function getStudentAssessments(semesterId) {
   return studentRequest(`/assessments${semesterId ? `?semesterId=${semesterId}` : ""}`);
 }
