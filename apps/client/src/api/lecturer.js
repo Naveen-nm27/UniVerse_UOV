@@ -1,6 +1,17 @@
-import { readStoredSession } from "../auth/session";
+import { clearStoredSession, readStoredSession } from "../auth/session";
 
-const API_BASE = "http://localhost:4000/api";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api";
+
+const fallbackProfile = {
+  id: 41,
+  email: "lecturer@example.test",
+  fullName: "Dr. N. Gunaratne",
+  role: "LECTURER",
+  department: "Computer Science",
+  title: "Senior Lecturer",
+  office: "Faculty of Computing",
+  status: "Active",
+};
 
 const fallbackOverview = {
   summary: {
@@ -28,168 +39,269 @@ const fallbackOverview = {
     { assessmentId: 502, offeringId: 2, offeringCode: "CS 2112", title: "Lab Quiz 2", type: "Quiz", released: "2026-10-05", grade: "B+", comment: "Revision needed on scheduling" },
   ],
   results: [
-    { resultId: 601, offeringId: 1, offeringCode: "CS 2013", studentName: "A. Perera", registrationNumber: "2024/CS/101", finalGrade: "A", gradePoint: "4.0", status: "Published", publishedAt: "2026-10-06" },
-    { resultId: 602, offeringId: 1, offeringCode: "CS 2013", studentName: "K. Silva", registrationNumber: "2024/CS/112", finalGrade: "B+", gradePoint: "3.3", status: "Published", publishedAt: "2026-10-06" },
-    { resultId: 603, offeringId: 2, offeringCode: "CS 2112", studentName: "R. Fernando", registrationNumber: "2024/CS/119", finalGrade: "A-", gradePoint: "3.7", status: "Return to student", publishedAt: "2026-10-04" },
+    { resultId: 601, offeringId: 1, offeringCode: "CS 2013", studentName: "A. Perera", registrationNumber: "2024/CS/101", finalGrade: "A", gradePoint: "4.0", status: "PUBLISHED", publishedAt: "2026-10-06" },
+    { resultId: 602, offeringId: 1, offeringCode: "CS 2013", studentName: "K. Silva", registrationNumber: "2024/CS/112", finalGrade: "B+", gradePoint: "3.3", status: "PUBLISHED", publishedAt: "2026-10-06" },
+    { resultId: 603, offeringId: 2, offeringCode: "CS 2112", studentName: "R. Fernando", registrationNumber: "2024/CS/119", finalGrade: "A-", gradePoint: "3.7", status: "RETURNED", publishedAt: "2026-10-04" },
   ],
-  profile: {
-    id: 41,
-    email: "lecturer@example.test",
-    fullName: "Dr. N. Gunaratne",
-    role: "LECTURER",
-    department: "Computer Science",
-    title: "Senior Lecturer",
-    office: "Faculty of Computing",
-    status: "Active",
-  },
 };
-
-function buildHeaders(token) {
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
 
 function getSessionToken() {
   return readStoredSession()?.token || null;
 }
 
-async function requestJson(path, { method = "GET", body } = {}) {
+function normalizeParams(value) {
+  if (typeof value === "string" || typeof value === "number") {
+    return { semesterId: value };
+  }
+  return value || {};
+}
+
+function buildQueryString(params) {
+  const search = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") return;
+    search.append(key, String(value));
+  });
+  const query = search.toString();
+  return query ? `?${query}` : "";
+}
+
+function toAppError(response, payload) {
+  const message = payload?.error?.message || payload?.message || "Request failed.";
+  const error = new Error(message);
+  error.status = response.status;
+  error.code = payload?.error?.code || response.status;
+  error.details = payload?.error?.details || payload?.details || null;
+  return error;
+}
+
+async function requestJson(path, { method = "GET", body, params, signal } = {}) {
   const token = getSessionToken();
-  const headers = { "Content-Type": "application/json", ...buildHeaders(token) };
-  const response = await fetch(`${API_BASE}${path}`, {
+  const query = buildQueryString(params);
+  const headers = new Headers();
+
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  if (body !== undefined) headers.set("Content-Type", "application/json");
+
+  const response = await fetch(`${API_BASE}${path}${query}`, {
     method,
     headers,
-    ...(body ? { body: JSON.stringify(body) } : {}),
+    signal,
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
 
+  const payload = await response.json().catch(() => ({}));
+
   if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
-    const error = new Error(data?.error?.message || data?.message || "Request failed.");
-    error.status = response.status;
+    const error = toAppError(response, payload);
+    if (response.status === 401) {
+      clearStoredSession();
+    }
     throw error;
   }
 
-  const data = await response.json().catch(() => ({}));
-  return data.data ?? data;
+  if (payload && typeof payload === "object" && "data" in payload) {
+    return payload;
+  }
+
+  return payload;
 }
 
-export async function getLecturerMe() {
+export async function getLecturerProfile(signal) {
   try {
-    return await requestJson("/lecturer/me");
+    return await requestJson("/lecturer/me", { signal });
   } catch (error) {
     if (error.status === 401 || error.status === 403) {
       throw error;
     }
-    return fallbackOverview.profile;
+    return { data: fallbackProfile };
   }
 }
 
-export async function getLecturerOverview(semesterId) {
+export async function getLecturerSemesters(signal) {
   try {
-    const data = await requestJson(`/lecturer/overview${semesterId ? `?semesterId=${encodeURIComponent(semesterId)}` : ""}`);
-    return data;
+    return await requestJson("/lecturer/semesters", { signal });
   } catch {
-    return fallbackOverview;
+    return { data: [{ id: "semester-1", label: "Semester 1" }, { id: "semester-2", label: "Semester 2" }] };
   }
 }
 
-export async function getLecturerOfferings(semesterId) {
+export async function getLecturerDashboard(semesterOrParams = {}, signal) {
+  const params = normalizeParams(semesterOrParams);
   try {
-    const data = await requestJson(`/lecturer/modules${semesterId ? `?semesterId=${encodeURIComponent(semesterId)}` : ""}`);
-    return data;
+    return await requestJson("/lecturer/dashboard", { params, signal });
   } catch {
-    return fallbackOverview.offerings;
+    return { data: fallbackOverview };
   }
 }
 
-export async function getLecturerOfferingDetails(offeringId) {
+export async function getLecturerOfferings(semesterOrParams = {}, signal) {
+  const params = normalizeParams(semesterOrParams);
   try {
-    const data = await requestJson(`/lecturer/modules/${encodeURIComponent(offeringId)}`);
-    return data;
+    return await requestJson("/lecturer/offerings", { params, signal });
+  } catch {
+    return { data: fallbackOverview.offerings };
+  }
+}
+
+export async function getLecturerOffering(offeringId, signal) {
+  try {
+    return await requestJson(`/lecturer/offerings/${encodeURIComponent(offeringId)}`, { signal });
   } catch {
     return {
-      id: Number(offeringId),
-      moduleCode: "CS 2013",
-      title: "Data Structures",
-      semesterLabel: "Semester 1",
-      studyYear: "Year 2",
-      hall: "C-204",
-      studentCount: 35,
-      roster: [
-        { id: 1, name: "A. Perera", registration: "2024/CS/101", attendance: 92 },
-        { id: 2, name: "K. Silva", registration: "2024/CS/112", attendance: 87 },
-        { id: 3, name: "R. Fernando", registration: "2024/CS/119", attendance: 81 },
-      ],
-      summary: { attendanceRate: 89, pendingResults: 3 },
+      data: {
+        id: Number(offeringId),
+        moduleCode: "CS 2013",
+        title: "Data Structures",
+        semesterLabel: "Semester 1",
+        studyYear: "Year 2",
+        hall: "C-204",
+        studentCount: 35,
+        roster: [
+          { id: 1, name: "A. Perera", registrationNumber: "2024/CS/101", attendance: 92, status: "Active" },
+          { id: 2, name: "K. Silva", registrationNumber: "2024/CS/112", attendance: 87, status: "Active" },
+          { id: 3, name: "R. Fernando", registrationNumber: "2024/CS/119", attendance: 81, status: "Active" },
+        ],
+        summary: { attendanceRate: 89, pendingResults: 3 },
+      },
     };
   }
 }
 
-export async function getLecturerTimetable(semesterId) {
+export async function getOfferingStudents(offeringId, params = {}, signal) {
   try {
-    const data = await requestJson(`/lecturer/timetable${semesterId ? `?semesterId=${encodeURIComponent(semesterId)}` : ""}`);
-    return data;
-  } catch {
-    return fallbackOverview.roomSchedule;
-  }
-}
-
-export async function getLecturerSessions(semesterId) {
-  try {
-    const data = await requestJson(`/lecturer/sessions${semesterId ? `?semesterId=${encodeURIComponent(semesterId)}` : ""}`);
-    return data;
-  } catch {
-    return fallbackOverview.sessions;
-  }
-}
-
-export async function getLecturerSessionDetails(sessionId) {
-  try {
-    const data = await requestJson(`/lecturer/sessions/${encodeURIComponent(sessionId)}`);
-    return data;
+    return await requestJson(`/lecturer/offerings/${encodeURIComponent(offeringId)}/students`, { params, signal });
   } catch {
     return {
-      id: Number(sessionId),
-      title: "Lecture 01",
-      date: "2026-10-08",
-      startTime: "09:00",
-      endTime: "10:30",
-      location: "C-204",
-      status: "Scheduled",
-      attendance: [
-        { id: 1, name: "A. Perera", registration: "2024/CS/101", status: "Present" },
-        { id: 2, name: "K. Silva", registration: "2024/CS/112", status: "Present" },
-        { id: 3, name: "R. Fernando", registration: "2024/CS/119", status: "Late" },
+      data: [
+        { id: 1, name: "A. Perera", registrationNumber: "2024/CS/101", batch: "2024", attemptNumber: 1, enrollmentStatus: "Completed" },
+        { id: 2, name: "K. Silva", registrationNumber: "2024/CS/112", batch: "2024", attemptNumber: 1, enrollmentStatus: "Completed" },
       ],
+      meta: { page: 1, totalPages: 1 },
     };
   }
 }
 
-export async function getLecturerAssessments(semesterId) {
+export async function getLecturerTimetable(semesterOrParams = {}, signal) {
+  const params = normalizeParams(semesterOrParams);
   try {
-    const data = await requestJson(`/lecturer/assessments${semesterId ? `?semesterId=${encodeURIComponent(semesterId)}` : ""}`);
-    return data;
+    return await requestJson("/lecturer/timetable", { params, signal });
   } catch {
-    return fallbackOverview.assessments;
+    return { data: fallbackOverview.roomSchedule };
   }
 }
 
-export async function getLecturerResults(semesterId) {
+export async function getLecturerSessions(semesterOrParams = {}, signal) {
+  const params = normalizeParams(semesterOrParams);
   try {
-    const data = await requestJson(`/lecturer/results${semesterId ? `?semesterId=${encodeURIComponent(semesterId)}` : ""}`);
-    return data;
+    return await requestJson("/lecturer/sessions", { params, signal });
   } catch {
-    return fallbackOverview.results;
+    return { data: fallbackOverview.sessions, meta: { page: 1, totalPages: 1 } };
   }
 }
 
-export async function getLecturerResultHistory(resultId) {
+export async function getLecturerSession(sessionId, signal) {
   try {
-    const data = await requestJson(`/lecturer/results/${encodeURIComponent(resultId)}/history`);
-    return data;
+    return await requestJson(`/lecturer/sessions/${encodeURIComponent(sessionId)}`, { signal });
   } catch {
-    return [
-      { id: 1, action: "Published", by: "Academic office", at: "2026-10-06" },
-      { id: 2, action: "Validated", by: "Management assistant", at: "2026-10-05" },
-    ];
+    return {
+      data: {
+        id: Number(sessionId),
+        title: "Lecture 01",
+        date: "2026-10-08",
+        startTime: "09:00",
+        endTime: "10:30",
+        location: "C-204",
+        status: "Scheduled",
+        attendance: [{ id: 1, name: "A. Perera", registrationNumber: "2024/CS/101", status: "present" }],
+      },
+    };
   }
 }
+
+export async function getSessionAttendance(sessionId, signal) {
+  try {
+    return await requestJson(`/lecturer/sessions/${encodeURIComponent(sessionId)}/attendance`, { signal });
+  } catch {
+    return { data: [{ id: 1, name: "A. Perera", registrationNumber: "2024/CS/101", status: "present", scanTime: "09:08:42" }] };
+  }
+}
+
+export async function openLectureSession(payload, signal) {
+  return requestJson("/lecturer/sessions", {
+    method: "POST",
+    body: payload,
+    signal,
+  });
+}
+
+export async function closeLectureSession(sessionId, signal) {
+  return requestJson(`/lecturer/sessions/${encodeURIComponent(sessionId)}/close`, {
+    method: "POST",
+    signal,
+  });
+}
+
+export async function getOfferingAssessments(offeringId, params = {}, signal) {
+  try {
+    return await requestJson(`/lecturer/offerings/${encodeURIComponent(offeringId)}/assessments`, { params, signal });
+  } catch {
+    return { data: fallbackOverview.assessments.filter((item) => item.offeringId === Number(offeringId)) || [] };
+  }
+}
+
+export async function getOfferingResults(offeringId, params = {}, signal) {
+  try {
+    return await requestJson(`/lecturer/offerings/${encodeURIComponent(offeringId)}/results`, { params, signal });
+  } catch {
+    return { data: fallbackOverview.results.filter((item) => item.offeringId === Number(offeringId)) || [] };
+  }
+}
+
+export async function getLecturerResult(resultId, signal) {
+  try {
+    return await requestJson(`/lecturer/results/${encodeURIComponent(resultId)}`, { signal });
+  } catch {
+    return {
+      data: {
+        id: Number(resultId),
+        studentName: "A. Perera",
+        registrationNumber: "2024/CS/101",
+        examType: "Final exam",
+        examDate: "2026-10-05",
+        examGrade: "A",
+        finalGrade: "A",
+        status: "PUBLISHED",
+        publishedAt: "2026-10-06T10:00:00+05:30",
+      },
+    };
+  }
+}
+
+export async function getLecturerOverview(semesterId, signal) {
+  return getLecturerDashboard(semesterId, signal);
+}
+
+export async function getLecturerResultHistory(resultId, signal) {
+  try {
+    return await requestJson(`/lecturer/results/${encodeURIComponent(resultId)}/history`, { signal });
+  } catch {
+    return { data: [{ id: 1, action: "Published", by: "Academic office", at: "2026-10-06T10:00:00+05:30" }] };
+  }
+}
+
+export const getLecturerMe = getLecturerProfile;
+export const getLecturerOfferingDetails = getLecturerOffering;
+export const getLecturerAssessments = async (semesterId, signal) => {
+  const semester = typeof semesterId === "string" || typeof semesterId === "number" ? { semesterId } : semesterId || {};
+  const { data } = await getOfferingAssessments(1, semester, signal);
+  return data;
+};
+export const getLecturerResults = async (semesterId, signal) => {
+  const semester = typeof semesterId === "string" || typeof semesterId === "number" ? { semesterId } : semesterId || {};
+  const { data } = await getOfferingResults(1, semester, signal);
+  return data;
+};
+export const getLecturerSessionDetails = getLecturerSession;
+
+export { API_BASE };

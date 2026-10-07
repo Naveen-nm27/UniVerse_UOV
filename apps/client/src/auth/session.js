@@ -1,7 +1,10 @@
 export function readStoredSession() {
   try {
-    const salted = localStorage.getItem("universe_session") || sessionStorage.getItem("universe_session");
-    return salted ? JSON.parse(salted) : null;
+    const sessionSession = sessionStorage.getItem("universe_session");
+    if (sessionSession) return JSON.parse(sessionSession);
+
+    const localSession = localStorage.getItem("universe_session");
+    return localSession ? JSON.parse(localSession) : null;
   } catch {
     return null;
   }

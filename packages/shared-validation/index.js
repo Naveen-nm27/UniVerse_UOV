@@ -37,3 +37,5 @@ export const userSchema = z.discriminatedUnion("role", [
   administratorSchema,
   managementAssistantSchema,
 ]);
+
+export * from "./lecturer.js";

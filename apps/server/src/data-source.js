@@ -20,6 +20,12 @@ import Exam from "./entities/Exam.js";
 import FinalResult from "./entities/FinalResult.js";
 import ResultStatusHistory from "./entities/ResultStatusHistory.js";
 import GradeScale from "./entities/GradeScale.js";
+import Lecturer from "./entities/Lecturer.js";
+import Department from "./entities/Department.js";
+import Hall from "./entities/Hall.js";
+import TimetableSlot from "./entities/TimetableSlot.js";
+import LectureSession from "./entities/LectureSession.js";
+import Attendance from "./entities/Attendance.js";
 
 export const AppDataSource = new DataSource({
   type: "mysql",
@@ -53,5 +59,11 @@ export const AppDataSource = new DataSource({
     FinalResult,
     ResultStatusHistory,
     GradeScale,
+    Lecturer,
+    Department,
+    Hall,
+    TimetableSlot,
+    LectureSession,
+    Attendance,
   ],
 });

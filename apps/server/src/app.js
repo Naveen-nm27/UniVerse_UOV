@@ -1,6 +1,8 @@
 import express from "express";
 import userRoutes from "./routes/user.routes.js";
 import studentRoutes from "./routes/student.routes.js";
+import lecturerRoutes from "./routes/lecturer.routes.js";
+import { errorHandler } from "./middleware/error-handler.js";
 
 const app = express();
 
@@ -32,6 +34,8 @@ app.use(
   studentRoutes
 );
 
+app.use("/api/lecturer", lecturerRoutes);
 app.use("/api/users", userRoutes);
+app.use(errorHandler);
 
 export default app;
