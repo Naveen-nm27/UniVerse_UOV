@@ -1,0 +1,436 @@
+-- UniVerse UOV MySQL 8.x schema
+-- Converted from the supplied DBML
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
+CREATE DATABASE IF NOT EXISTS `universe_uov` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE `universe_uov`;
+
+DROP TABLE IF EXISTS `PASSWORD_RESETS`;
+DROP TABLE IF EXISTS `REPORT_LOGS`;
+DROP TABLE IF EXISTS `ANNOUNCEMENTS`;
+DROP TABLE IF EXISTS `NOTIFICATIONS`;
+DROP TABLE IF EXISTS `DOCUMENT_ACCESS`;
+DROP TABLE IF EXISTS `DOCUMENT_VERSIONS`;
+DROP TABLE IF EXISTS `DOCUMENTS`;
+DROP TABLE IF EXISTS `DOCUMENT_CATEGORIES`;
+DROP TABLE IF EXISTS `EXAM_ELIGIBILITY`;
+DROP TABLE IF EXISTS `ATTENDANCE_SUMMARY`;
+DROP TABLE IF EXISTS `ATTENDANCE_RECORDS`;
+DROP TABLE IF EXISTS `LECTURES`;
+DROP TABLE IF EXISTS `FINGERPRINT_TEMPLATES`;
+DROP TABLE IF EXISTS `GPA_RECORDS`;
+DROP TABLE IF EXISTS `FINAL_RESULTS`;
+DROP TABLE IF EXISTS `VERIFICATION_AUDIT_LOGS`;
+DROP TABLE IF EXISTS `RESULT_VERIFICATIONS`;
+DROP TABLE IF EXISTS `MARKS`;
+DROP TABLE IF EXISTS `ASSESSMENT_COMPONENTS`;
+DROP TABLE IF EXISTS `ENROLLMENTS`;
+DROP TABLE IF EXISTS `COURSE_OFFERINGS`;
+DROP TABLE IF EXISTS `COURSES`;
+DROP TABLE IF EXISTS `LECTURERS`;
+DROP TABLE IF EXISTS `STUDENTS`;
+DROP TABLE IF EXISTS `BATCHES`;
+DROP TABLE IF EXISTS `PROGRAMS`;
+DROP TABLE IF EXISTS `USERS`;
+DROP TABLE IF EXISTS `DEPARTMENTS`;
+DROP TABLE IF EXISTS `FACULTIES`;
+DROP TABLE IF EXISTS `ROLES`;
+
+CREATE TABLE `ROLES` (
+  `id` BIGINT AUTO_INCREMENT,
+  `name` VARCHAR(100) NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_roles_name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `FACULTIES` (
+  `id` BIGINT AUTO_INCREMENT,
+  `name` VARCHAR(150) NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `DEPARTMENTS` (
+  `id` BIGINT AUTO_INCREMENT,
+  `faculty_id` BIGINT NOT NULL,
+  `name` VARCHAR(150) NOT NULL,
+  `code` VARCHAR(20) NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_departments_code` (`code`),
+  KEY `idx_departments_faculty` (`faculty_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `USERS` (
+  `id` BIGINT AUTO_INCREMENT,
+  `role_id` BIGINT NOT NULL,
+  `email` VARCHAR(255) NOT NULL,
+  `password_hash` VARCHAR(255) NOT NULL,
+  `status` VARCHAR(30) NOT NULL DEFAULT 'active',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_users_email` (`email`),
+  KEY `idx_users_role` (`role_id`),
+  KEY `idx_users_department` (`department_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `PROGRAMS` (
+  `id` BIGINT AUTO_INCREMENT,
+  `department_id` BIGINT NOT NULL,
+  `name` VARCHAR(150) NOT NULL,
+  `code` VARCHAR(30) NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_programs_code` (`code`),
+  KEY `idx_programs_department` (`department_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `BATCHES` (
+  `id` BIGINT AUTO_INCREMENT,
+  `program_id` BIGINT NOT NULL,
+  `intake_year` YEAR NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_batches_program` (`program_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `STUDENTS` (
+  `id` BIGINT,
+  `registration_no` VARCHAR(50) NOT NULL,
+  `batch_id` BIGINT NOT NULL,
+  `current_semester` INT NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_students_registration_no` (`registration_no`),
+  KEY `idx_students_batch` (`batch_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `LECTURERS` (
+  `id` BIGINT,
+  `staff_no` VARCHAR(50) NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_lecturers_staff_no` (`staff_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `COURSES` (
+  `id` BIGINT AUTO_INCREMENT,
+  `program_id` BIGINT NOT NULL,
+  `title` VARCHAR(200) NOT NULL,
+  `code` VARCHAR(30) NOT NULL,
+  `credit_hours` DECIMAL(4,2) NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_courses_code` (`code`),
+  KEY `idx_courses_program` (`program_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `COURSE_OFFERINGS` (
+  `id` BIGINT AUTO_INCREMENT,
+  `course_id` BIGINT NOT NULL,
+  `lecturer_id` BIGINT NOT NULL,
+  `batch_id` BIGINT NOT NULL,
+  `academic_year` VARCHAR(20) NOT NULL,
+  `semester` INT NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_offering` (`course_id`, `batch_id`, `academic_year`, `semester`),
+  KEY `idx_offering_lecturer` (`lecturer_id`),
+  KEY `idx_offering_batch` (`batch_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `ENROLLMENTS` (
+  `id` BIGINT AUTO_INCREMENT,
+  `student_id` BIGINT NOT NULL,
+  `offering_id` BIGINT NOT NULL,
+  `attempt_number` INT NOT NULL,
+  `is_repeat` BOOLEAN NOT NULL,
+  `status` VARCHAR(30) NOT NULL DEFAULT 'enrolled',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_enrollment` (`student_id`, `offering_id`, `attempt_number`),
+  KEY `idx_enrollment_offering` (`offering_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `ASSESSMENT_COMPONENTS` (
+  `id` BIGINT AUTO_INCREMENT,
+  `offering_id` BIGINT NOT NULL,
+  `component_type` VARCHAR(100) NOT NULL,
+  `max_marks` DECIMAL(6,2) NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_component_offering` (`offering_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `MARKS` (
+  `id` BIGINT AUTO_INCREMENT,
+  `enrollment_id` BIGINT NOT NULL,
+  `component_id` BIGINT NOT NULL,
+  `is_carried_forward` BOOLEAN NOT NULL,
+  `entered_by` BIGINT NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_marks` (`enrollment_id`, `component_id`),
+  KEY `idx_marks_component` (`component_id`),
+  KEY `idx_marks_entered_by` (`entered_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `RESULT_VERIFICATIONS` (
+  `id` BIGINT AUTO_INCREMENT,
+  `offering_id` BIGINT NOT NULL,
+  `submitted_by` BIGINT NOT NULL,
+  `overall_status` VARCHAR(30) NOT NULL DEFAULT 'pending',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_verification_offering` (`offering_id`),
+  KEY `idx_verification_submitted_by` (`submitted_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `VERIFICATION_AUDIT_LOGS` (
+  `id` BIGINT AUTO_INCREMENT,
+  `verification_id` BIGINT NOT NULL,
+  `action_by` BIGINT NOT NULL,
+  `action` VARCHAR(100) NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_audit_verification` (`verification_id`),
+  KEY `idx_audit_action_by` (`action_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `FINAL_RESULTS` (
+  `id` BIGINT AUTO_INCREMENT,
+  `enrollment_id` BIGINT NOT NULL,
+  `is_published` BOOLEAN NOT NULL,
+  `entered_by` BIGINT NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_final_result_enrollment` (`enrollment_id`),
+  KEY `idx_final_result_verification` (`verification_id`),
+  KEY `idx_final_result_entered_by` (`entered_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `GPA_RECORDS` (
+  `id` BIGINT AUTO_INCREMENT,
+  `student_id` BIGINT NOT NULL,
+  `academic_year` VARCHAR(20) NOT NULL,
+  `semester` INT NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_gpa` (`student_id`, `academic_year`, `semester`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `FINGERPRINT_TEMPLATES` (
+  `id` BIGINT AUTO_INCREMENT,
+  `student_id` BIGINT NOT NULL,
+  `template_path` VARCHAR(500) NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_fingerprint_student` (`student_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `LECTURES` (
+  `id` BIGINT AUTO_INCREMENT,
+  `offering_id` BIGINT NOT NULL,
+  `lecturer_id` BIGINT NOT NULL,
+  `lecture_date` DATE NOT NULL,
+  `status` VARCHAR(30) NOT NULL DEFAULT 'conducted',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_lectures_offering` (`offering_id`),
+  KEY `idx_lectures_lecturer` (`lecturer_id`),
+  KEY `idx_lectures_date` (`lecture_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `ATTENDANCE_RECORDS` (
+  `id` BIGINT AUTO_INCREMENT,
+  `lecture_id` BIGINT NOT NULL,
+  `student_id` BIGINT NOT NULL,
+  `status` VARCHAR(30) NOT NULL DEFAULT 'present',
+  `marked_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_attendance` (`lecture_id`, `student_id`),
+  KEY `idx_attendance_student` (`student_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `ATTENDANCE_SUMMARY` (
+  `id` BIGINT AUTO_INCREMENT,
+  `student_id` BIGINT NOT NULL,
+  `offering_id` BIGINT NOT NULL,
+  `lectures_held` INT NOT NULL,
+  `lectures_attended` INT NOT NULL,
+  `attendance_percent` DECIMAL(5,2) NOT NULL,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_attendance_summary` (`student_id`, `offering_id`),
+  KEY `idx_att_sum_offering` (`offering_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `EXAM_ELIGIBILITY` (
+  `id` BIGINT AUTO_INCREMENT,
+  `student_id` BIGINT NOT NULL,
+  `offering_id` BIGINT NOT NULL,
+  `attendance_percent` DECIMAL(5,2) NOT NULL,
+  `required_percent` DECIMAL(5,2) NOT NULL,
+  `is_eligible` BOOLEAN NOT NULL,
+  `evaluated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_exam_eligibility` (`student_id`, `offering_id`),
+  KEY `idx_exam_elig_offering` (`offering_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `DOCUMENT_CATEGORIES` (
+  `id` BIGINT AUTO_INCREMENT,
+  `name` VARCHAR(100) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_document_categories_name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `DOCUMENTS` (
+  `id` BIGINT AUTO_INCREMENT,
+  `uploaded_by` BIGINT NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_documents_category` (`category_id`),
+  KEY `idx_documents_department` (`department_id`),
+  KEY `idx_documents_course` (`course_id`),
+  KEY `idx_documents_uploaded_by` (`uploaded_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `DOCUMENT_VERSIONS` (
+  `id` BIGINT AUTO_INCREMENT,
+  `document_id` BIGINT NOT NULL,
+  `version_number` INT NOT NULL,
+  `file_path` VARCHAR(500) NOT NULL,
+  `uploaded_by` BIGINT NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_doc_version` (`document_id`, `version_number`),
+  KEY `idx_doc_versions_uploader` (`uploaded_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `DOCUMENT_ACCESS` (
+  `id` BIGINT AUTO_INCREMENT,
+  `document_id` BIGINT NOT NULL,
+  `access_type` VARCHAR(30) NOT NULL DEFAULT 'read',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_doc_access_document` (`document_id`),
+  KEY `idx_doc_access_role` (`role_id`),
+  KEY `idx_doc_access_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `NOTIFICATIONS` (
+  `id` BIGINT AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL,
+  `type` VARCHAR(50) NOT NULL,
+  `message` VARCHAR(500) NOT NULL,
+  `is_read` BOOLEAN NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_notifications_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `ANNOUNCEMENTS` (
+  `id` BIGINT AUTO_INCREMENT,
+  `posted_by` BIGINT NOT NULL,
+  `title` VARCHAR(200) NOT NULL,
+  `content` TEXT NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_announcements_posted_by` (`posted_by`),
+  KEY `idx_announcements_role` (`target_role_id`),
+  KEY `idx_announcements_department` (`target_department_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `REPORT_LOGS` (
+  `id` BIGINT AUTO_INCREMENT,
+  `generated_by` BIGINT NOT NULL,
+  `report_type` VARCHAR(100) NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_report_logs_user` (`generated_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `PASSWORD_RESETS` (
+  `id` BIGINT AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL,
+  `token` VARCHAR(255) NOT NULL,
+  `expires_at` DATETIME NOT NULL,
+  `used` BOOLEAN NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_password_resets_token` (`token`),
+  KEY `idx_password_resets_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE `DEPARTMENTS` ADD CONSTRAINT `fk_departments_faculty_id` FOREIGN KEY (`faculty_id`) REFERENCES `FACULTIES` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `USERS` ADD CONSTRAINT `fk_users_role_id` FOREIGN KEY (`role_id`) REFERENCES `ROLES` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `USERS` ADD CONSTRAINT `fk_users_department_id` FOREIGN KEY (`department_id`) REFERENCES `DEPARTMENTS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `PROGRAMS` ADD CONSTRAINT `fk_programs_department_id` FOREIGN KEY (`department_id`) REFERENCES `DEPARTMENTS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `BATCHES` ADD CONSTRAINT `fk_batches_program_id` FOREIGN KEY (`program_id`) REFERENCES `PROGRAMS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `STUDENTS` ADD CONSTRAINT `fk_students_id` FOREIGN KEY (`id`) REFERENCES `USERS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `STUDENTS` ADD CONSTRAINT `fk_students_batch_id` FOREIGN KEY (`batch_id`) REFERENCES `BATCHES` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `LECTURERS` ADD CONSTRAINT `fk_lecturers_id` FOREIGN KEY (`id`) REFERENCES `USERS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `DEPARTMENTS` ADD CONSTRAINT `fk_departments_head_user_id` FOREIGN KEY (`head_user_id`) REFERENCES `LECTURERS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `COURSES` ADD CONSTRAINT `fk_courses_program_id` FOREIGN KEY (`program_id`) REFERENCES `PROGRAMS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `COURSE_OFFERINGS` ADD CONSTRAINT `fk_course_offerings_course_id` FOREIGN KEY (`course_id`) REFERENCES `COURSES` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `COURSE_OFFERINGS` ADD CONSTRAINT `fk_course_offerings_lecturer_id` FOREIGN KEY (`lecturer_id`) REFERENCES `LECTURERS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `COURSE_OFFERINGS` ADD CONSTRAINT `fk_course_offerings_batch_id` FOREIGN KEY (`batch_id`) REFERENCES `BATCHES` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `ENROLLMENTS` ADD CONSTRAINT `fk_enrollments_student_id` FOREIGN KEY (`student_id`) REFERENCES `STUDENTS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `ENROLLMENTS` ADD CONSTRAINT `fk_enrollments_offering_id` FOREIGN KEY (`offering_id`) REFERENCES `COURSE_OFFERINGS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `ASSESSMENT_COMPONENTS` ADD CONSTRAINT `fk_assessment_components_offering_id` FOREIGN KEY (`offering_id`) REFERENCES `COURSE_OFFERINGS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `MARKS` ADD CONSTRAINT `fk_marks_enrollment_id` FOREIGN KEY (`enrollment_id`) REFERENCES `ENROLLMENTS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `MARKS` ADD CONSTRAINT `fk_marks_component_id` FOREIGN KEY (`component_id`) REFERENCES `ASSESSMENT_COMPONENTS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `MARKS` ADD CONSTRAINT `fk_marks_entered_by` FOREIGN KEY (`entered_by`) REFERENCES `LECTURERS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `RESULT_VERIFICATIONS` ADD CONSTRAINT `fk_result_verifications_offering_id` FOREIGN KEY (`offering_id`) REFERENCES `COURSE_OFFERINGS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `RESULT_VERIFICATIONS` ADD CONSTRAINT `fk_result_verifications_submitted_by` FOREIGN KEY (`submitted_by`) REFERENCES `LECTURERS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `RESULT_VERIFICATIONS` ADD CONSTRAINT `fk_result_verifications_hod_reviewer_id` FOREIGN KEY (`hod_reviewer_id`) REFERENCES `LECTURERS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `RESULT_VERIFICATIONS` ADD CONSTRAINT `fk_result_verifications_dean_reviewer_id` FOREIGN KEY (`dean_reviewer_id`) REFERENCES `LECTURERS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `VERIFICATION_AUDIT_LOGS` ADD CONSTRAINT `fk_verification_audit_logs_verification_id` FOREIGN KEY (`verification_id`) REFERENCES `RESULT_VERIFICATIONS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `VERIFICATION_AUDIT_LOGS` ADD CONSTRAINT `fk_verification_audit_logs_action_by` FOREIGN KEY (`action_by`) REFERENCES `USERS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `FINAL_RESULTS` ADD CONSTRAINT `fk_final_results_enrollment_id` FOREIGN KEY (`enrollment_id`) REFERENCES `ENROLLMENTS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `FINAL_RESULTS` ADD CONSTRAINT `fk_final_results_verification_id` FOREIGN KEY (`verification_id`) REFERENCES `RESULT_VERIFICATIONS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `FINAL_RESULTS` ADD CONSTRAINT `fk_final_results_entered_by` FOREIGN KEY (`entered_by`) REFERENCES `USERS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `GPA_RECORDS` ADD CONSTRAINT `fk_gpa_records_student_id` FOREIGN KEY (`student_id`) REFERENCES `STUDENTS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `FINGERPRINT_TEMPLATES` ADD CONSTRAINT `fk_fingerprint_templates_student_id` FOREIGN KEY (`student_id`) REFERENCES `STUDENTS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `LECTURES` ADD CONSTRAINT `fk_lectures_offering_id` FOREIGN KEY (`offering_id`) REFERENCES `COURSE_OFFERINGS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `LECTURES` ADD CONSTRAINT `fk_lectures_lecturer_id` FOREIGN KEY (`lecturer_id`) REFERENCES `LECTURERS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `ATTENDANCE_RECORDS` ADD CONSTRAINT `fk_attendance_records_lecture_id` FOREIGN KEY (`lecture_id`) REFERENCES `LECTURES` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `ATTENDANCE_RECORDS` ADD CONSTRAINT `fk_attendance_records_student_id` FOREIGN KEY (`student_id`) REFERENCES `STUDENTS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `ATTENDANCE_SUMMARY` ADD CONSTRAINT `fk_attendance_summary_student_id` FOREIGN KEY (`student_id`) REFERENCES `STUDENTS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `ATTENDANCE_SUMMARY` ADD CONSTRAINT `fk_attendance_summary_offering_id` FOREIGN KEY (`offering_id`) REFERENCES `COURSE_OFFERINGS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `EXAM_ELIGIBILITY` ADD CONSTRAINT `fk_exam_eligibility_student_id` FOREIGN KEY (`student_id`) REFERENCES `STUDENTS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `EXAM_ELIGIBILITY` ADD CONSTRAINT `fk_exam_eligibility_offering_id` FOREIGN KEY (`offering_id`) REFERENCES `COURSE_OFFERINGS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `DOCUMENTS` ADD CONSTRAINT `fk_documents_category_id` FOREIGN KEY (`category_id`) REFERENCES `DOCUMENT_CATEGORIES` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `DOCUMENTS` ADD CONSTRAINT `fk_documents_department_id` FOREIGN KEY (`department_id`) REFERENCES `DEPARTMENTS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `DOCUMENTS` ADD CONSTRAINT `fk_documents_course_id` FOREIGN KEY (`course_id`) REFERENCES `COURSES` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `DOCUMENTS` ADD CONSTRAINT `fk_documents_uploaded_by` FOREIGN KEY (`uploaded_by`) REFERENCES `USERS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `DOCUMENT_VERSIONS` ADD CONSTRAINT `fk_document_versions_document_id` FOREIGN KEY (`document_id`) REFERENCES `DOCUMENTS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `DOCUMENT_VERSIONS` ADD CONSTRAINT `fk_document_versions_uploaded_by` FOREIGN KEY (`uploaded_by`) REFERENCES `USERS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `DOCUMENTS` ADD CONSTRAINT `fk_documents_current_version_id` FOREIGN KEY (`current_version_id`) REFERENCES `DOCUMENT_VERSIONS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `DOCUMENT_ACCESS` ADD CONSTRAINT `fk_document_access_document_id` FOREIGN KEY (`document_id`) REFERENCES `DOCUMENTS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `DOCUMENT_ACCESS` ADD CONSTRAINT `fk_document_access_role_id` FOREIGN KEY (`role_id`) REFERENCES `ROLES` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `DOCUMENT_ACCESS` ADD CONSTRAINT `fk_document_access_user_id` FOREIGN KEY (`user_id`) REFERENCES `USERS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `NOTIFICATIONS` ADD CONSTRAINT `fk_notifications_user_id` FOREIGN KEY (`user_id`) REFERENCES `USERS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `ANNOUNCEMENTS` ADD CONSTRAINT `fk_announcements_posted_by` FOREIGN KEY (`posted_by`) REFERENCES `USERS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `ANNOUNCEMENTS` ADD CONSTRAINT `fk_announcements_target_role_id` FOREIGN KEY (`target_role_id`) REFERENCES `ROLES` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `ANNOUNCEMENTS` ADD CONSTRAINT `fk_announcements_target_department_id` FOREIGN KEY (`target_department_id`) REFERENCES `DEPARTMENTS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `REPORT_LOGS` ADD CONSTRAINT `fk_report_logs_generated_by` FOREIGN KEY (`generated_by`) REFERENCES `USERS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE `PASSWORD_RESETS` ADD CONSTRAINT `fk_password_resets_user_id` FOREIGN KEY (`user_id`) REFERENCES `USERS` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+SET FOREIGN_KEY_CHECKS = 1;

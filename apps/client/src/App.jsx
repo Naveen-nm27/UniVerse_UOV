@@ -1,9 +1,7 @@
-import LoginForm from "./components/LoginForm";
-import ManagementAssistantDashboard from "./pages/ma/ManagementAssistantDashboard";
-import "./App.css";
+import HodDashboard from "./pages/hod/HodDashboard";
 
 function App() {
-  return window.location.pathname.startsWith("/ma") ? <ManagementAssistantDashboard /> : <LoginForm />;
+  return <HodDashboard />;
 }
 
 export default App;

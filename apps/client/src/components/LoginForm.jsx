@@ -6,6 +6,9 @@ const dashboardByRole = {
   lecturer: "/lecturer/dashboard",
   administrator: "/admin/dashboard",
   management_assistant: "/management-assistant/dashboard",
+  hod: "/hod",
+  HOD: "/hod",
+  head_of_department: "/hod",
 };
 
 export default function LoginForm() {
