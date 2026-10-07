@@ -1,5 +1,6 @@
 import LoginForm from "./components/LoginForm";
 import ManagementAssistantDashboard from "./pages/ma/ManagementAssistantDashboard";
+import LecturerDashboard from "./pages/lecturer/LecturerDashboard";
 import StudentDashboard from "./pages/student/StudentDashboard";
 import "./App.css";
 
@@ -8,6 +9,10 @@ function getPageForPath() {
 
   if (pathname === "/" || pathname === "") {
     return <LoginForm />;
+  }
+
+  if (pathname === "/lecturer" || pathname.startsWith("/lecturer/")) {
+    return <LecturerDashboard />;
   }
 
   if (pathname.startsWith("/ma")) {

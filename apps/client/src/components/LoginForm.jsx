@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { loginUser } from "../api/users";
+import { clearStoredSession, writeStoredSession } from "../auth/session";
 
 const dashboardByRole = {
   student: "/student",
   STUDENT: "/student",
   lecturer: "/lecturer",
+  LECTURER: "/lecturer",
   administrator: "/admin",
   management_assistant: "/ma",
+  MANAGEMENT_ASSISTANT: "/ma",
   hod: "/hod",
   dean: "/dean",
   ma: "/ma",
@@ -37,10 +40,10 @@ export default function LoginForm() {
     setStatus("loading");
     try {
       const session = await loginUser(form);
-      const destination = dashboardByRole[session.user.role];
+      const roleKey = session?.user?.role;
+      const destination = dashboardByRole[roleKey] || dashboardByRole[roleKey?.toLowerCase()];
       if (!destination) throw new Error("Your account role is not supported yet.");
-      const storage = form.remember ? localStorage : sessionStorage;
-      storage.setItem("universe_session", JSON.stringify(session));
+      writeStoredSession(session, form.remember);
       window.location.assign(destination);
     } catch (error) {
       setStatus("error");
