@@ -1,7 +1,7 @@
-import HodDashboard from "./pages/hod/HodDashboard";
+import AdminDashboard from "./pages/admin/AdminDashboard";
 
 function App() {
-  return <HodDashboard />;
+  return <AdminDashboard />;
 }
 
 export default App;

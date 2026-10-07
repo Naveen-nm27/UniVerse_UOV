@@ -4,7 +4,9 @@ import { loginUser } from "../api/users";
 const dashboardByRole = {
   student: "/student/dashboard",
   lecturer: "/lecturer/dashboard",
-  administrator: "/admin/dashboard",
+  administrator: "/admin",
+  ADMIN: "/admin",
+  admin: "/admin",
   management_assistant: "/management-assistant/dashboard",
   hod: "/hod",
   HOD: "/hod",
