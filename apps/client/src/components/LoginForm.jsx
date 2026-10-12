@@ -1,24 +1,15 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { loginUser } from "../api/users";
 
-const dashboardByRole = {
-  student: "/student/dashboard",
-  lecturer: "/lecturer/dashboard",
-  administrator: "/admin",
-  ADMIN: "/admin",
-  admin: "/admin",
-  management_assistant: "/management-assistant/dashboard",
-  hod: "/hod",
-  HOD: "/hod",
-  head_of_department: "/hod",
-};
-
-export default function LoginForm() {
+export default function LoginForm({ onLogin, initialMessage = "" }) {
   const [form, setForm] = useState({ email: "", password: "", remember: false });
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState("idle");
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(initialMessage);
   const [showPassword, setShowPassword] = useState(false);
+  const loginController = useRef(null);
+
+  useEffect(() => () => loginController.current?.abort(), []);
 
   function updateField(event) {
     const { name, value, checked, type } = event.target;
@@ -35,16 +26,19 @@ export default function LoginForm() {
     if (Object.keys(nextErrors).length) return setErrors(nextErrors);
 
     setStatus("loading");
+    const controller = new AbortController();
+    loginController.current = controller;
     try {
-      const session = await loginUser(form);
-      const destination = dashboardByRole[session.user.role];
-      if (!destination) throw new Error("Your account role is not supported yet.");
-      const storage = form.remember ? localStorage : sessionStorage;
-      storage.setItem("universe_session", JSON.stringify(session));
-      window.location.assign(destination);
+      const session = await loginUser({ ...form, signal: controller.signal });
+      if (!onLogin(session, form.remember)) {
+        throw new Error("Your account role is not supported yet.");
+      }
     } catch (error) {
+      if (error.name === "AbortError") return;
       setStatus("error");
-      setMessage(error.message);
+      setMessage(error?.message || "Unable to sign in. Please try again.");
+    } finally {
+      if (loginController.current === controller) loginController.current = null;
     }
   }
 

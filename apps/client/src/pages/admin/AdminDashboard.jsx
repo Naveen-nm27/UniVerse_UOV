@@ -1,765 +1,415 @@
-import { useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { apiRequest } from "../../api/client";
 import "./AdminDashboard.css";
 
-const navigation = [
-  "Overview",
-  "MA staff",
-  "Backup and recovery",
-  "Audit logs",
-  "Monitoring",
-  "System reports",
+const pages = [
+  { label: "Overview", href: "/admin" },
+  { label: "MA staff", href: "/admin/ma-staff" },
+  { label: "Backup and recovery", href: "/admin/backup" },
+  { label: "Audit logs", href: "/admin/audit" },
+  { label: "Monitoring", href: "/admin/monitoring" },
+  { label: "System reports", href: "/admin/reports" },
 ];
 
-const summaryCards = [
-  { label: "Active users", value: "8,942", period: "Last 24 hours", detail: "Updated 08:40 AM", href: "/admin/users" },
-  { label: "MA staff accounts", value: "36", period: "Current roster", detail: "Updated 08:40 AM", href: "/admin/ma-staff" },
-  { label: "Latest backup", value: "10:15 AM", period: "Last successful job", detail: "On campus storage", href: "/admin/backup" },
-  { label: "System health", value: "Stable", period: "Last 15 minutes", detail: "No critical alerts", href: "/admin/monitoring" },
-];
-
-const alerts = [
-  { title: "Backup job overdue", detail: "Nightly archive did not complete before the expected window.", severity: "high" },
-  { title: "Failed login spike", detail: "Multiple invalid sign-ins reported from a single IP range.", severity: "medium" },
-  { title: "Storage threshold warning", detail: "Database storage is at 82% with the next alert threshold at 85%.", severity: "low" },
-];
-
-const backupHistory = [
-  { id: "BK-1042", type: "Full", requestedBy: "System scheduler", startedAt: "2026-10-07 10:15", endedAt: "2026-10-07 10:21", status: "Successful", size: "18.2 GB", target: "Primary storage", checksum: "Verified", error: "—" },
-  { id: "BK-1038", type: "Incremental", requestedBy: "Operations team", startedAt: "2026-10-06 02:00", endedAt: "2026-10-06 02:17", status: "Overdue", size: "Not reported", target: "Secondary target", checksum: "Not connected", error: "Secondary target not reporting status" },
-  { id: "BK-1034", type: "Full", requestedBy: "Manual admin", startedAt: "2026-10-05 21:35", endedAt: "2026-10-05 21:40", status: "Failed", size: "0.0 GB", target: "Archive vault", checksum: "Failed", error: "Target storage permission error" },
-];
-
-const maStaffRows = [
-  { id: "MA-102", name: "Nimali Jayasinghe", email: "nimali@vau.ac.lk", staffNumber: "MA-4402", office: "Academic office", status: "Active", lastSignIn: "Today · 08:12 AM", permissions: "Users.manage, audit.view, backups.view" },
-  { id: "MA-098", name: "Dilshan Kumar", email: "dilshan@vau.ac.lk", staffNumber: "MA-4389", office: "Student services", status: "Suspended", lastSignIn: "2026-10-05", permissions: "Users.view" },
-  { id: "MA-087", name: "Arosha Nethmini", email: "arosha@vau.ac.lk", staffNumber: "MA-4327", office: "Faculty admin", status: "Active", lastSignIn: "Yesterday · 05:40 PM", permissions: "Audit.view, reports.run" },
-];
-
-const auditEvents = [
-  { id: "AUD-8831", timestamp: "2026-10-07 08:42", actor: "System Admin", action: "MA_ACCOUNT_CREATED", resource: "ma_staff", outcome: "Success", requestId: "req-8412" },
-  { id: "AUD-8829", timestamp: "2026-10-07 08:17", actor: "Nimali Jayasinghe", action: "BACKUP_REQUESTED", resource: "backup_jobs", outcome: "Success", requestId: "req-8399" },
-  { id: "AUD-8820", timestamp: "2026-10-06 18:03", actor: "Arosha Nethmini", action: "REPORT_EXPORT", resource: "reports", outcome: "Failed", requestId: "req-8344" },
-  { id: "AUD-8814", timestamp: "2026-10-05 16:11", actor: "System Admin", action: "ROLE_UPDATED", resource: "ma_staff", outcome: "Success", requestId: "req-8308" },
-];
-
-const reportJobs = [
-  { name: "Daily access summary", status: "Completed", time: "08:05 AM", owner: "Security automation" },
-  { name: "Faculty student count", status: "Pending", time: "Queued 07:20 AM", owner: "Reporting service" },
-  { name: "Semester performance export", status: "Failed", time: "Yesterday · 11:10 PM", owner: "Operations team" },
-];
-
-const recentActivity = [
-  { item: "MA account creation", detail: "Computer Science MA profile updated", time: "08:17 AM" },
-  { item: "System alert cleared", detail: "Authentication worker recovered after restart", time: "07:42 AM" },
-  { item: "Report generation", detail: "Access review export completed successfully", time: "Yesterday" },
-];
-
-const monitoringSummary = [
-  { name: "API", status: "Healthy", lastUpdated: "08:40 AM", detail: "Latency under 150ms" },
-  { name: "Database", status: "Degraded", lastUpdated: "08:37 AM", detail: "One replica fell behind by 4 minutes" },
-  { name: "Backup scheduler", status: "Unavailable", lastUpdated: "08:05 AM", detail: "No heartbeat received from remote target" },
-  { name: "Storage", status: "Unknown", lastUpdated: "Not connected", detail: "Storage API not reporting metrics" },
-];
-
-const chartSeries = [42, 30, 46, 67, 58, 74, 61];
-
-const initialForm = {
-  fullName: "",
-  email: "",
-  staffNumber: "",
-  office: "",
-  phone: "",
-  status: "Active",
+const pageByPath = {
+  "/admin": "Overview",
+  "/admin/ma-staff": "MA staff",
+  "/admin/backup": "Backup and recovery",
+  "/admin/audit": "Audit logs",
+  "/admin/monitoring": "Monitoring",
+  "/admin/reports": "System reports",
 };
 
-export default function AdminDashboard() {
+export default function AdminDashboard({ session, navigate, onLogout }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [activeNav, setActiveNav] = useState("Overview");
-  const [maQuery, setMaQuery] = useState("");
-  const [selectedStaffId, setSelectedStaffId] = useState(maStaffRows[0].id);
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [reviewMode, setReviewMode] = useState(false);
-  const [formData, setFormData] = useState(initialForm);
-  const [formErrors, setFormErrors] = useState({});
-  const [restoreTargetId, setRestoreTargetId] = useState(backupHistory[0].id);
-  const [restorePhrase, setRestorePhrase] = useState("");
-  const [selectedAuditId, setSelectedAuditId] = useState(auditEvents[0].id);
+  const [healthState, setHealthState] = useState("idle");
+  const [healthMessage, setHealthMessage] = useState("");
+  const [healthCheckedAt, setHealthCheckedAt] = useState("");
+  const [form, setForm] = useState({ fullName: "", email: "", staffNumber: "", position: "", officeNumber: "" });
+  const [showReview, setShowReview] = useState(false);
+  const [formMessage, setFormMessage] = useState("");
+  const healthController = useRef(null);
+  const isMounted = useRef(true);
+  const menuButtonRef = useRef(null);
+  const firstNavLinkRef = useRef(null);
+  const currentPage = pageByPath[window.location.pathname] || "Overview";
+  const displayName = session.user.fullName || "Administrator";
 
-  const statusTone = useMemo(
-    () => ({
-      Successful: "good",
-      Overdue: "warn",
-      "Not connected": "neutral",
-      Completed: "good",
-      Pending: "warn",
-      Failed: "bad",
-      Healthy: "good",
-      Degraded: "warn",
-      Unavailable: "bad",
-      Unknown: "neutral",
-      Success: "good",
-    }),
-    [],
-  );
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+      healthController.current?.abort();
+    };
+  }, []);
+  useEffect(() => () => healthController.current?.abort(), [currentPage]);
+  useEffect(() => {
+    if (!drawerOpen) return undefined;
+    function closeOnEscape(event) {
+      if (event.key === "Escape") {
+        setDrawerOpen(false);
+        menuButtonRef.current?.focus();
+      }
+    }
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [drawerOpen]);
 
-  const filteredStaff = useMemo(() => {
-    const q = maQuery.trim().toLowerCase();
-    if (!q) return maStaffRows;
-    return maStaffRows.filter((entry) =>
-      [entry.name, entry.email, entry.staffNumber, entry.office].some((field) => field.toLowerCase().includes(q)),
-    );
-  }, [maQuery]);
+  function changePage(href) {
+    healthController.current?.abort();
+    healthController.current = null;
+    setHealthState("idle");
+    setHealthMessage("");
+    setHealthCheckedAt("");
+    navigate(href);
+    setShowReview(false);
+    setFormMessage("");
+  }
 
-  const selectedStaff = useMemo(
-    () => filteredStaff.find((row) => row.id === selectedStaffId) ?? filteredStaff[0] ?? maStaffRows[0],
-    [filteredStaff, selectedStaffId],
-  );
-
-  const selectedAudit = useMemo(
-    () => auditEvents.find((item) => item.id === selectedAuditId) ?? auditEvents[0],
-    [selectedAuditId],
-  );
-
-  const selectedBackup = useMemo(
-    () => backupHistory.find((item) => item.id === restoreTargetId) ?? backupHistory[0],
-    [restoreTargetId],
-  );
-
-  const updateFormField = (event) => {
-    const { name, value } = event.target;
-    setFormData((current) => ({ ...current, [name]: value }));
-    setFormErrors((current) => ({ ...current, [name]: "" }));
-  };
-
-  const validateForm = () => {
-    const nextErrors = {};
-    if (!formData.fullName.trim()) nextErrors.fullName = "Full name is required.";
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) nextErrors.email = "Enter a valid university email.";
-    if (!formData.staffNumber.trim()) nextErrors.staffNumber = "Staff number is required.";
-    if (!formData.office.trim()) nextErrors.office = "Office is required.";
-    if (formData.phone && !/^[0-9+\-\s()]+$/.test(formData.phone)) nextErrors.phone = "Phone can only contain numbers and formatting characters.";
-    return nextErrors;
-  };
-
-  const handleCreateSubmit = (event) => {
+  function goTo(event, href) {
     event.preventDefault();
-    const nextErrors = validateForm();
-    if (Object.keys(nextErrors).length) {
-      setFormErrors(nextErrors);
+    changePage(href);
+    setDrawerOpen(false);
+    menuButtonRef.current?.focus();
+  }
+
+  function openDrawer() {
+    setDrawerOpen(true);
+    window.requestAnimationFrame(() => firstNavLinkRef.current?.focus());
+  }
+
+  function closeDrawer() {
+    setDrawerOpen(false);
+    menuButtonRef.current?.focus();
+  }
+
+  async function checkApiHealth() {
+    healthController.current?.abort();
+    const controller = new AbortController();
+    healthController.current = controller;
+    setHealthState("loading");
+    setHealthMessage("");
+    setHealthCheckedAt("");
+    try {
+      const result = await apiRequest("../health", { signal: controller.signal });
+      setHealthState("success");
+      setHealthCheckedAt(new Date().toISOString());
+      setHealthMessage(result?.status === "ok"
+        ? "The API is reachable. Administrative monitoring metrics are not provided by this endpoint."
+        : "The health endpoint responded, but did not provide a recognized status.");
+    } catch (error) {
+      if (error.name === "AbortError") {
+        if (isMounted.current) setHealthState("idle");
+        return;
+      }
+      setHealthState("error");
+      setHealthMessage(error.message);
+    } finally {
+      if (healthController.current === controller) healthController.current = null;
+    }
+  }
+
+  function reviewAccount(event) {
+    event.preventDefault();
+    const values = Object.values(form).map((value) => value.trim());
+    if (values.some((value) => !value)) {
+      setFormMessage("Complete all fields before reviewing this draft.");
       return;
     }
-    setReviewMode(true);
+    setForm((current) => Object.fromEntries(Object.entries(current).map(([key, value]) => [key, value.trim()])));
+    setFormMessage("");
+    setShowReview(true);
+  }
+
+  const pageContent = {
+    Overview: <Overview navigate={changePage} />,
+    "MA staff": (
+      <MaStaffPage
+        form={form}
+        setForm={setForm}
+        formMessage={formMessage}
+        showReview={showReview}
+        onReview={reviewAccount}
+        onCancelReview={() => setShowReview(false)}
+      />
+    ),
+    "Backup and recovery": <BackupPage />,
+    "Audit logs": <AuditPage />,
+    Monitoring: (
+      <MonitoringPage
+        healthState={healthState}
+        healthMessage={healthMessage}
+        healthCheckedAt={healthCheckedAt}
+        onCheck={checkApiHealth}
+      />
+    ),
+    "System reports": <ReportsPage />,
   };
-
-  const handleConfirmCreate = () => {
-    setReviewMode(false);
-    setShowCreateForm(false);
-    setFormData(initialForm);
-    setFormErrors({});
-  };
-
-  const backupActionAvailable = false;
-
-  const isOverview = activeNav === "Overview";
-  const isMaStaff = activeNav === "MA staff";
-  const isBackup = activeNav === "Backup and recovery";
-  const isAudit = activeNav === "Audit logs";
-  const isMonitoring = activeNav === "Monitoring";
-  const isReports = activeNav === "System reports";
 
   return (
     <div className="admin-shell">
-      <button className={`admin-scrim ${drawerOpen ? "is-visible" : ""}`} aria-label="Close navigation" onClick={() => setDrawerOpen(false)} />
-
+      <button
+        className={`admin-scrim ${drawerOpen ? "is-visible" : ""}`}
+        type="button"
+        aria-label="Close navigation"
+        onClick={closeDrawer}
+      />
       <aside className={`admin-sidebar ${drawerOpen ? "is-open" : ""}`} aria-label="Administrator navigation">
-        <div className="admin-brand-wrap">
-          <div className="admin-brand">
-            <span className="admin-brand-mark">U</span>
-            <span>UniVerse</span>
-          </div>
-        </div>
-
-        <div className="admin-role-tag">
-          <span className="admin-role-dot" aria-hidden="true" />
-          System administrator
-        </div>
-
-        <nav className="admin-nav" aria-label="Main navigation">
-          {navigation.map((item) => (
-            <button
-              type="button"
-              key={item}
-              className={`admin-nav-button ${activeNav === item ? "is-active" : ""}`}
-              onClick={() => {
-                setActiveNav(item);
-                setDrawerOpen(false);
-              }}
+        <a className="admin-brand" href="/admin" onClick={(event) => goTo(event, "/admin")}>
+          <span className="admin-brand-mark" aria-hidden="true">U</span>
+          <span>UniVerse</span>
+        </a>
+        <div className="admin-role-tag"><span className="admin-role-dot" /> System administrator</div>
+        <nav className="admin-nav" aria-label="Admin workspace">
+          {pages.map((page, index) => (
+            <a
+              ref={index === 0 ? firstNavLinkRef : undefined}
+              className={`admin-nav-link ${currentPage === page.label ? "is-active" : ""}`}
+              href={page.href}
+              aria-current={currentPage === page.label ? "page" : undefined}
+              key={page.label}
+              onClick={(event) => goTo(event, page.href)}
             >
-              <span className="admin-nav-icon" aria-hidden="true">{iconFor(item)}</span>
-              <span>{item}</span>
-            </button>
+              <span className="admin-nav-icon" aria-hidden="true">{iconFor(page.label)}</span>
+              <span>{page.label}</span>
+            </a>
           ))}
         </nav>
-
         <div className="admin-sidebar-footer">
-          <div className="admin-help-icon">?</div>
-          <div>
-            <strong>Operations centre</strong>
-            <span>Protected admin access</span>
-          </div>
+          <span className="admin-help-icon" aria-hidden="true">i</span>
+          <div><strong>Protected workspace</strong><span>Admin access</span></div>
         </div>
       </aside>
 
       <div className="admin-main">
         <header className="admin-topbar">
-          <button className="admin-menu-button" type="button" aria-label="Open navigation" onClick={() => setDrawerOpen(true)}>
-            ☰
-          </button>
-
-          <div className="admin-breadcrumb">
-            <span>Workspace</span>
-            <span aria-hidden="true">/</span>
-            <strong>{activeNav}</strong>
-          </div>
-
-          <div className="admin-top-actions">
-            <button className="admin-icon-button" type="button" aria-label="Notifications">
-              <span className="admin-notification-dot" aria-hidden="true" />
-              ♡
-            </button>
-
-            <div className="admin-profile">
-              <span className="admin-avatar">SA</span>
-              <div className="admin-profile-copy">
-                <strong>System Admin</strong>
-                <small>Administrator</small>
-              </div>
-              <span aria-hidden="true">⌄</span>
-            </div>
+          <button
+            className="admin-menu-button"
+            ref={menuButtonRef}
+            type="button"
+            aria-label="Open navigation"
+            aria-expanded={drawerOpen}
+            onClick={openDrawer}
+          >☰</button>
+          <div className="admin-breadcrumb"><span>Workspace</span><span aria-hidden="true">/</span><strong>{currentPage}</strong></div>
+          <div className="admin-profile">
+            <span className="admin-avatar" aria-hidden="true">{initials(displayName)}</span>
+            <span className="admin-profile-copy"><strong>{displayName}</strong><small>System administrator</small></span>
+            <button className="admin-logout" type="button" onClick={onLogout}>Sign out</button>
           </div>
         </header>
 
         <main className="admin-content">
-          {isOverview && (
-            <>
-              <section className="admin-panel intro-panel">
-                <div>
-                  <p className="admin-section-label">Operational summary</p>
-                  <h1>Administrator overview</h1>
-                  <p className="admin-intro-copy">System-wide access is governed by backend permissions. Review operational health, backups, alerts and scheduled reporting for the current environment.</p>
-                </div>
-                <div className="admin-badge-group">
-                  <span className="admin-badge admin-badge-primary">Production</span>
-                  <span className="admin-badge">Updated 08:40 AM</span>
-                </div>
-              </section>
-
-              <section className="admin-summary-grid" aria-label="Summary cards">
-                {summaryCards.map((card) => (
-                  <a className="admin-summary-card" key={card.label} href={card.href}>
-                    <div className="admin-card-head">
-                      <span className="admin-card-mark">◎</span>
-                      <span className="admin-card-tag">Live</span>
-                    </div>
-                    <strong>{card.value}</strong>
-                    <span>{card.label}</span>
-                    <small>{card.period}</small>
-                    <em>{card.detail}</em>
-                  </a>
-                ))}
-              </section>
-
-              <div className="admin-two-column">
-                <section className="admin-panel">
-                  <div className="admin-panel-head">
-                    <div>
-                      <p className="admin-section-label">Backup status</p>
-                      <h2>Recent backup jobs</h2>
-                    </div>
-                    <button type="button" className="admin-link-button" onClick={() => setActiveNav("Backup and recovery")}>Open backup centre →</button>
-                  </div>
-
-                  <div className="admin-list">
-                    {backupHistory.map((item) => (
-                      <div key={item.id} className="admin-list-item">
-                        <div>
-                          <strong>{item.type} · {item.id}</strong>
-                          <small>{item.requestedBy}</small>
-                        </div>
-                        <div className="admin-meta-block">
-                          <span className={`admin-state ${statusTone[item.status] ?? "neutral"}`}>{item.status}</span>
-                          <time>{item.startedAt}</time>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-
-                <section className="admin-panel">
-                  <div className="admin-panel-head">
-                    <div>
-                      <p className="admin-section-label">Alerts</p>
-                      <h2>System and security alerts</h2>
-                    </div>
-                    <button type="button" className="admin-link-button" onClick={() => setActiveNav("Monitoring")}>Open monitoring →</button>
-                  </div>
-
-                  <div className="admin-alert-list">
-                    {alerts.map((alert) => (
-                      <div key={alert.title} className="admin-alert-item">
-                        <span className={`admin-alert-dot ${alert.severity}`} aria-hidden="true" />
-                        <div>
-                          <strong>{alert.title}</strong>
-                          <small>{alert.detail}</small>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              </div>
-
-              <div className="admin-two-column">
-                <section className="admin-panel">
-                  <div className="admin-panel-head">
-                    <div>
-                      <p className="admin-section-label">Report jobs</p>
-                      <h2>Recent report generation</h2>
-                    </div>
-                    <button type="button" className="admin-link-button" onClick={() => setActiveNav("System reports")}>View system reports →</button>
-                  </div>
-
-                  <div className="admin-table-wrap">
-                    <table className="admin-table">
-                      <thead>
-                        <tr>
-                          <th>Report</th>
-                          <th>Status</th>
-                          <th>Owner</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {reportJobs.map((job) => (
-                          <tr key={job.name}>
-                            <td>
-                              <strong>{job.name}</strong>
-                              <small>{job.time}</small>
-                            </td>
-                            <td><span className={`admin-state ${statusTone[job.status] ?? "neutral"}`}>{job.status}</span></td>
-                            <td>{job.owner}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </section>
-
-                <section className="admin-panel">
-                  <div className="admin-panel-head">
-                    <div>
-                      <p className="admin-section-label">Activity</p>
-                      <h2>Recent operations</h2>
-                    </div>
-                    <button type="button" className="admin-link-button" onClick={() => setActiveNav("Audit logs")}>Open audit logs →</button>
-                  </div>
-
-                  <div className="admin-activity-list">
-                    {recentActivity.map((item) => (
-                      <div key={item.item} className="admin-activity-item">
-                        <span className="admin-pill">Event</span>
-                        <div>
-                          <strong>{item.item}</strong>
-                          <small>{item.detail}</small>
-                        </div>
-                        <time>{item.time}</time>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              </div>
-            </>
-          )}
-
-          {isMaStaff && (
-            <div className="admin-tab-layout">
-              <section className="admin-panel list-panel">
-                <div className="admin-panel-head compact-head">
-                  <div>
-                    <p className="admin-section-label">MA staff</p>
-                    <h2>Management assistant directory</h2>
-                  </div>
-                  <button type="button" className="admin-primary-button" onClick={() => setShowCreateForm((value) => !value)}>Add MA staff</button>
-                </div>
-
-                <div className="admin-search-wrap">
-                  <input
-                    type="search"
-                    value={maQuery}
-                    onChange={(event) => setMaQuery(event.target.value)}
-                    placeholder="Search by name, email, office or staff number"
-                    aria-label="Search MA staff"
-                  />
-                </div>
-
-                <div className="admin-table-wrap">
-                  <table className="admin-table">
-                    <thead>
-                      <tr>
-                        <th>Name</th>
-                        <th>Office</th>
-                        <th>Status</th>
-                        <th>Last sign-in</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredStaff.map((person) => (
-                        <tr key={person.id} className={selectedStaff.id === person.id ? "is-selected" : ""} onClick={() => setSelectedStaffId(person.id)}>
-                          <td>
-                            <strong>{person.name}</strong>
-                            <small>{person.staffNumber}</small>
-                          </td>
-                          <td>{person.office}</td>
-                          <td><span className={`admin-state ${person.status === "Active" ? "good" : "warn"}`}>{person.status}</span></td>
-                          <td>{person.lastSignIn}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-
-              <section className="admin-panel detail-panel">
-                <p className="admin-section-label">Selected account</p>
-                <h3>{selectedStaff.name}</h3>
-                <div className="admin-detail-grid">
-                  <div><span>Email</span><strong>{selectedStaff.email}</strong></div>
-                  <div><span>Office</span><strong>{selectedStaff.office}</strong></div>
-                  <div><span>Staff number</span><strong>{selectedStaff.staffNumber}</strong></div>
-                  <div><span>Permissions</span><strong>{selectedStaff.permissions}</strong></div>
-                </div>
-
-                <div className="admin-action-box">
-                  <strong>Allowed actions</strong>
-                  <div className="admin-action-group">
-                    <button type="button" className="admin-secondary-button" disabled>Activate</button>
-                    <button type="button" className="admin-secondary-button" disabled>Suspend</button>
-                    <button type="button" className="admin-secondary-button" disabled>Reset password</button>
-                  </div>
-                  <p className="admin-inline-note">This list is kept empty unless the backend explicitly returns a real permissioned action. The browser must not invent admin privileges.</p>
-                </div>
-              </section>
-
-              {showCreateForm && (
-                <section className="admin-panel form-panel">
-                  <div className="admin-panel-head compact-head">
-                    <div>
-                      <p className="admin-section-label">Add MA staff</p>
-                      <h2>New management assistant</h2>
-                    </div>
-                  </div>
-
-                  {!reviewMode ? (
-                    <form onSubmit={handleCreateSubmit} className="admin-form">
-                      <div className="admin-form-grid">
-                        <label>
-                          <span>Full name</span>
-                          <input name="fullName" value={formData.fullName} onChange={updateFormField} />
-                          {formErrors.fullName && <small>{formErrors.fullName}</small>}
-                        </label>
-                        <label>
-                          <span>University email</span>
-                          <input name="email" value={formData.email} onChange={updateFormField} />
-                          {formErrors.email && <small>{formErrors.email}</small>}
-                        </label>
-                        <label>
-                          <span>Staff number</span>
-                          <input name="staffNumber" value={formData.staffNumber} onChange={updateFormField} />
-                          {formErrors.staffNumber && <small>{formErrors.staffNumber}</small>}
-                        </label>
-                        <label>
-                          <span>Office</span>
-                          <select name="office" value={formData.office} onChange={updateFormField}>
-                            <option value="">Select office</option>
-                            <option value="Academic office">Academic office</option>
-                            <option value="Student services">Student services</option>
-                            <option value="Faculty admin">Faculty admin</option>
-                          </select>
-                          {formErrors.office && <small>{formErrors.office}</small>}
-                        </label>
-                        <label>
-                          <span>Phone</span>
-                          <input name="phone" value={formData.phone} onChange={updateFormField} />
-                          {formErrors.phone && <small>{formErrors.phone}</small>}
-                        </label>
-                        <label>
-                          <span>Initial status</span>
-                          <select name="status" value={formData.status} onChange={updateFormField}>
-                            <option value="Active">Active</option>
-                            <option value="Suspended">Suspended</option>
-                            <option value="Pending">Pending</option>
-                          </select>
-                        </label>
-                      </div>
-
-                      <div className="admin-form-actions">
-                        <button type="button" className="admin-secondary-button" onClick={() => setShowCreateForm(false)}>Cancel</button>
-                        <button type="submit" className="admin-primary-button">Review details</button>
-                      </div>
-                    </form>
-                  ) : (
-                    <div className="admin-review-box">
-                      <h3>Review before creation</h3>
-                      <div className="admin-review-grid">
-                        <div><span>Full name</span><strong>{formData.fullName}</strong></div>
-                        <div><span>Email</span><strong>{formData.email}</strong></div>
-                        <div><span>Staff number</span><strong>{formData.staffNumber}</strong></div>
-                        <div><span>Office</span><strong>{formData.office}</strong></div>
-                        <div><span>Phone</span><strong>{formData.phone || "Not provided"}</strong></div>
-                        <div><span>Status</span><strong>{formData.status}</strong></div>
-                      </div>
-                      <div className="admin-inline-warning">
-                        The server decides the MA role and records the authenticated admin who created this account. No browser-supplied creator ID is accepted as authority.
-                      </div>
-                      <div className="admin-form-actions">
-                        <button type="button" className="admin-secondary-button" onClick={() => setReviewMode(false)}>Back</button>
-                        <button type="button" className="admin-primary-button" onClick={handleConfirmCreate}>Create account (not executed without API)</button>
-                      </div>
-                    </div>
-                  )}
-                </section>
-              )}
-            </div>
-          )}
-
-          {isBackup && (
-            <div className="admin-backup-layout">
-              <section className="admin-panel">
-                <div className="admin-panel-head compact-head">
-                  <div>
-                    <p className="admin-section-label">Backup and recovery</p>
-                    <h2>Backup overview</h2>
-                  </div>
-                  <button type="button" className="admin-primary-button" disabled>Request new backup</button>
-                </div>
-
-                <div className="admin-summary-grid small-grid">
-                  <div className="admin-metric-card">
-                    <span>Last verified backup</span>
-                    <strong>2026-10-07 10:15</strong>
-                    <small>Checksum verified</small>
-                  </div>
-                  <div className="admin-metric-card">
-                    <span>Next scheduled</span>
-                    <strong>2026-10-08 02:00</strong>
-                    <small>Nightly automated run</small>
-                  </div>
-                  <div className="admin-metric-card">
-                    <span>Retention</span>
-                    <strong>30 days</strong>
-                    <small>Primary storage</small>
-                  </div>
-                </div>
-
-                <div className="admin-table-wrap">
-                  <table className="admin-table">
-                    <thead>
-                      <tr>
-                        <th>Job</th>
-                        <th>Type</th>
-                        <th>Status</th>
-                        <th>Target</th>
-                        <th>Verified</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {backupHistory.map((job) => (
-                        <tr key={job.id} onClick={() => setRestoreTargetId(job.id)}>
-                          <td>
-                            <strong>{job.id}</strong>
-                            <small>{job.startedAt}</small>
-                          </td>
-                          <td>{job.type}</td>
-                          <td><span className={`admin-state ${statusTone[job.status] ?? "neutral"}`}>{job.status}</span></td>
-                          <td>{job.target}</td>
-                          <td>{job.checksum}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-
-              <section className="admin-panel recover-panel">
-                <div className="admin-panel-head compact-head">
-                  <div>
-                    <p className="admin-section-label">Recovery</p>
-                    <h2>Restore review</h2>
-                  </div>
-                </div>
-
-                <div className="admin-recovery-card">
-                  <strong>{selectedBackup.id}</strong>
-                  <ul>
-                    <li><span>Environment</span><strong>Production</strong></li>
-                    <li><span>Backup date</span><strong>{selectedBackup.startedAt}</strong></li>
-                    <li><span>Validation</span><strong>{selectedBackup.checksum}</strong></li>
-                    <li><span>Error summary</span><strong>{selectedBackup.error}</strong></li>
-                  </ul>
-                </div>
-
-                <div className="admin-restore-box">
-                  <label>
-                    <span>Type confirmation phrase</span>
-                    <input value={restorePhrase} onChange={(event) => setRestorePhrase(event.target.value)} placeholder="Type: RESTORE PRODUCTION" />
-                  </label>
-                  <button type="button" className="admin-primary-button" disabled={!backupActionAvailable || restorePhrase !== "RESTORE PRODUCTION"}>Request restore preview</button>
-                  <p className="admin-inline-note">Restore preview and live restore are disabled because the recovery API is not available in this frontend-only task.</p>
-                </div>
-              </section>
-            </div>
-          )}
-
-          {isAudit && (
-            <div className="admin-tab-layout">
-              <section className="admin-panel list-panel">
-                <div className="admin-panel-head compact-head">
-                  <div>
-                    <p className="admin-section-label">Audit logs</p>
-                    <h2>Server audit trail</h2>
-                  </div>
-                </div>
-
-                <div className="admin-filter-row">
-                  <select defaultValue="All actions">
-                    <option>All actions</option>
-                    <option>MA_ACCOUNT_CREATED</option>
-                    <option>BACKUP_REQUESTED</option>
-                    <option>REPORT_EXPORT</option>
-                  </select>
-                  <select defaultValue="All outcomes">
-                    <option>All outcomes</option>
-                    <option>Success</option>
-                    <option>Failed</option>
-                  </select>
-                </div>
-
-                <div className="admin-table-wrap">
-                  <table className="admin-table">
-                    <thead>
-                      <tr>
-                        <th>Timestamp</th>
-                        <th>Actor</th>
-                        <th>Action</th>
-                        <th>Outcome</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {auditEvents.map((event) => (
-                        <tr key={event.id} className={selectedAudit.id === event.id ? "is-selected" : ""} onClick={() => setSelectedAuditId(event.id)}>
-                          <td>{event.timestamp}</td>
-                          <td>{event.actor}</td>
-                          <td>{event.action}</td>
-                          <td><span className={`admin-state ${statusTone[event.outcome] ?? "neutral"}`}>{event.outcome}</span></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-
-              <section className="admin-panel detail-panel">
-                <p className="admin-section-label">Audit details</p>
-                <h3>{selectedAudit.action}</h3>
-                <div className="admin-detail-grid">
-                  <div><span>Actor</span><strong>{selectedAudit.actor}</strong></div>
-                  <div><span>Resource</span><strong>{selectedAudit.resource}</strong></div>
-                  <div><span>Outcome</span><strong>{selectedAudit.outcome}</strong></div>
-                  <div><span>Request ID</span><strong>{selectedAudit.requestId}</strong></div>
-                </div>
-                <div className="admin-inline-warning">
-                  Sensitive values such as raw tokens, database credentials and password hashes are intentionally excluded from the browser UI. This is a read-only audit surface.
-                </div>
-              </section>
-            </div>
-          )}
-
-          {isMonitoring && (
-            <div className="admin-monitoring-layout">
-              <section className="admin-panel">
-                <div className="admin-panel-head compact-head">
-                  <div>
-                    <p className="admin-section-label">Monitoring</p>
-                    <h2>Service health</h2>
-                  </div>
-                  <button type="button" className="admin-secondary-button">Refresh</button>
-                </div>
-
-                <div className="admin-monitor-grid">
-                  {monitoringSummary.map((metric) => (
-                    <div key={metric.name} className="admin-monitor-card">
-                      <div className="admin-monitor-top">
-                        <strong>{metric.name}</strong>
-                        <span className={`admin-state ${statusTone[metric.status] ?? "neutral"}`}>{metric.status}</span>
-                      </div>
-                      <small>{metric.lastUpdated}</small>
-                      <p>{metric.detail}</p>
-                    </div>
-                  ))}
-                </div>
-              </section>
-
-              <section className="admin-panel">
-                <div className="admin-panel-head compact-head">
-                  <div>
-                    <p className="admin-section-label">Trends</p>
-                    <h2>Recent operational data</h2>
-                  </div>
-                </div>
-                <div className="admin-chart" aria-label="Monitoring chart">
-                  {chartSeries.map((value, index) => (
-                    <div key={`${value}-${index}`} className="admin-bar" style={{ height: `${value}%` }} title={`${value}%`} />
-                  ))}
-                </div>
-                <div className="admin-chart-labels">
-                  <span>Mon</span>
-                  <span>Tue</span>
-                  <span>Wed</span>
-                  <span>Thu</span>
-                  <span>Fri</span>
-                  <span>Sat</span>
-                  <span>Sun</span>
-                </div>
-              </section>
-            </div>
-          )}
-
-          {isReports && (
-            <section className="admin-panel empty-panel">
-              <p className="admin-section-label">System reports</p>
-              <h2>Operational reports</h2>
-              <p className="admin-empty-copy">This screen is intentionally informational until a server-backed reporting API is exposed. Current data is only shown in the overview and the audit/monitoring surfaces where real status values are available.</p>
-            </section>
-          )}
+          {pageContent[currentPage] || pageContent.Overview}
         </main>
       </div>
     </div>
   );
 }
 
-function iconFor(item) {
-  switch (item) {
-    case "Overview":
-      return "◉";
-    case "MA staff":
-      return "◎";
-    case "Backup and recovery":
-      return "▣";
-    case "Audit logs":
-      return "◷";
-    case "Monitoring":
-      return "⌁";
-    case "System reports":
-      return "▤";
-    default:
-      return "•";
-  }
+function Overview({ navigate }) {
+  return (
+    <>
+      <section className="admin-intro">
+        <p className="admin-eyebrow">Admin workspace</p>
+        <h1>Administrator overview</h1>
+        <p>Operational data will appear here when the server exposes approved, permission-checked admin APIs. No sample or estimated values are shown.</p>
+      </section>
+      <section className="admin-overview-grid" aria-label="Admin areas">
+        {pages.slice(1).map((page) => (
+          <a className="admin-area-card" href={page.href} key={page.href} onClick={(event) => {
+            event.preventDefault();
+            navigate(page.href);
+          }}>
+            <span className="admin-card-icon" aria-hidden="true">{iconFor(page.label)}</span>
+            <h2>{page.label}</h2>
+            <p>{descriptionFor(page.label)}</p>
+            <span className="admin-card-status">Unavailable · server API not exposed</span>
+          </a>
+        ))}
+      </section>
+      <UnavailableNotice title="Live overview and server authorization are unavailable">
+        The current server has no Admin overview endpoint or authorization middleware for Admin operations. Counts, alerts, recent activity and job totals are not calculated in the browser; every future operation must be authorized by the server.
+      </UnavailableNotice>
+    </>
+  );
+}
+
+function MaStaffPage({ form, setForm, formMessage, showReview, onReview, onCancelReview }) {
+  return (
+    <>
+      <PageHeading eyebrow="People and access" title="Management Assistant staff" description="Directory and account-creation tools require server-backed staff and user records." />
+      <UnavailableNotice title="Staff directory is unavailable">
+        No authenticated MA directory or account-creation endpoint is exposed. The existing login and user schema do not provide an MA creation contract.
+      </UnavailableNotice>
+      <section className="admin-panel" aria-labelledby="ma-create-title">
+        <div className="admin-panel-heading">
+          <div><p className="admin-eyebrow">Account setup</p><h2 id="ma-create-title">Prepare an MA account request</h2></div>
+          <span className="admin-status admin-status-unavailable">Creation unavailable</span>
+        </div>
+        {showReview ? (
+          <div className="admin-review">
+            <h3>Review draft</h3>
+            <p>This is a local preview only. It has not been submitted or saved.</p>
+            <dl className="admin-review-grid">
+              {Object.entries({ "Full name": form.fullName, Email: form.email, "Staff number": form.staffNumber, Position: form.position, "Office number": form.officeNumber }).map(([label, value]) => (
+                <div key={label}><dt>{label}</dt><dd>{value}</dd></div>
+              ))}
+            </dl>
+            <div className="admin-actions">
+              <button type="button" className="admin-button admin-button-secondary" onClick={onCancelReview}>Edit draft</button>
+              <button type="button" className="admin-button" disabled aria-describedby="ma-create-unavailable">Create account</button>
+            </div>
+            <p id="ma-create-unavailable" className="admin-help-text">Unavailable: the server must provide an authorized MA creation endpoint with duplicate handling and server-derived actor identity.</p>
+          </div>
+        ) : (
+          <form className="admin-form" onSubmit={onReview}>
+            <div className="admin-form-grid">
+              <FormField label="Full name" name="fullName" value={form.fullName} onChange={setForm} autoComplete="name" />
+              <FormField label="University email" name="email" value={form.email} onChange={setForm} type="email" autoComplete="email" />
+              <FormField label="Staff number" name="staffNumber" value={form.staffNumber} onChange={setForm} />
+              <FormField label="Position" name="position" value={form.position} onChange={setForm} />
+              <FormField label="Office number" name="officeNumber" value={form.officeNumber} onChange={setForm} />
+            </div>
+            {formMessage && <p className="admin-form-message" role="alert">{formMessage}</p>}
+            <div className="admin-actions">
+              <button className="admin-button admin-button-secondary" type="reset" onClick={() => {
+                setForm({ fullName: "", email: "", staffNumber: "", position: "", officeNumber: "" });
+              }}>Clear</button>
+              <button className="admin-button" type="submit">Review draft</button>
+            </div>
+            <p className="admin-help-text">Review only prepares a local preview. No account, password or email is created or sent.</p>
+          </form>
+        )}
+      </section>
+    </>
+  );
+}
+
+function BackupPage() {
+  return (
+    <>
+      <PageHeading eyebrow="Resilience" title="Backup and recovery" description="Backup history, job state and restore operations must come from the server." />
+      <UnavailableNotice title="Backup and recovery APIs are unavailable">
+        The backend exposes no backup catalogue, creation, job-status, retention/download or restore-preview/restore endpoint. No backup is assumed to exist, and no restore can be initiated here.
+      </UnavailableNotice>
+      <section className="admin-panel">
+        <h2>Required before enabling backup actions</h2>
+        <ul className="admin-contract-list">
+          <li>Authenticated backup history and detail responses with redacted summaries.</li>
+          <li>Backup request endpoint returning a job ID and queued/running/completed/failed states.</li>
+          <li>Protected artifact download URL or authenticated download response with expiry.</li>
+          <li>Restore preview and separately confirmed restore endpoints, including asynchronous job status.</li>
+        </ul>
+        <p className="admin-help-text">Create and restore actions remain unavailable until these contracts exist. No secrets or backup contents are displayed.</p>
+      </section>
+    </>
+  );
+}
+
+function AuditPage() {
+  return (
+    <>
+      <PageHeading eyebrow="Governance" title="Audit logs" description="Only server-provided redacted audit summaries should be shown." />
+      <UnavailableNotice title="Audit log API is unavailable">
+        The backend does not expose an authenticated audit search endpoint, supported filters, pagination or a redacted event schema. No audit events or payload details are fabricated.
+      </UnavailableNotice>
+      <section className="admin-panel">
+        <h2>Required audit contract</h2>
+        <p className="admin-copy">A server-side paginated event list with supported date/action/outcome filters, stable cursors, redacted fields and authorization enforcement is needed before this table can be populated.</p>
+      </section>
+    </>
+  );
+}
+
+function MonitoringPage({ healthState, healthMessage, healthCheckedAt, onCheck }) {
+  return (
+    <>
+      <PageHeading eyebrow="Service status" title="Monitoring" description="Health indicators must be timestamped and reflect server-reported data." />
+      <section className="admin-panel">
+        <div className="admin-panel-heading">
+          <div><p className="admin-eyebrow">API liveness</p><h2>Basic health endpoint</h2></div>
+          <button className="admin-button admin-button-secondary" type="button" onClick={onCheck} disabled={healthState === "loading"}>
+            {healthState === "loading" ? "Checking…" : "Check API"}
+          </button>
+        </div>
+        {healthState === "idle" && <p className="admin-copy">The server exposes a basic <code>/health</code> check. Select “Check API” to request its current response.</p>}
+        {healthState === "success" && <p className="admin-result" role="status">{healthMessage}</p>}
+        {healthState === "success" && healthCheckedAt && <p className="admin-help-text">Checked from this browser at <time dateTime={healthCheckedAt}>{new Date(healthCheckedAt).toLocaleString()}</time>.</p>}
+        {healthState === "error" && <p className="admin-form-message" role="alert">{healthMessage} You can retry the check.</p>}
+      </section>
+      <UnavailableNotice title="Detailed monitoring is unavailable">
+        No authenticated metrics, alert history, timestamps or trend-series endpoints are exposed. The basic liveness response is not a substitute for service health, backup state or system statistics.
+      </UnavailableNotice>
+    </>
+  );
+}
+
+function ReportsPage() {
+  return (
+    <>
+      <PageHeading eyebrow="Reporting" title="System reports" description="Generate only reports explicitly approved and supported by the backend." />
+      <UnavailableNotice title="No report catalogue or generation API is available">
+        The backend does not provide a report catalogue, report submission endpoint, job-status response, aggregate preview or protected download. Therefore no report types or filter options are offered.
+      </UnavailableNotice>
+      <section className="admin-panel">
+        <h2>Report availability</h2>
+        <p className="admin-copy">There are currently no report types that this client can confirm are supported. The UI will list each report’s contents and personal-information classification only when those details are provided by the server. CSV/PDF exports, academic statistics and sample jobs are not generated here.</p>
+        <p className="admin-help-text">Required contract: approved catalogue and filter schema; submit response with job ID; queued/running/completed/failed state, requester, period, generation time and expiry; optional server-provided aggregate preview; protected download response or authenticated URL.</p>
+      </section>
+    </>
+  );
+}
+
+function PageHeading({ eyebrow, title, description }) {
+  return (
+    <section className="admin-intro">
+      <p className="admin-eyebrow">{eyebrow}</p>
+      <h1>{title}</h1>
+      <p>{description}</p>
+    </section>
+  );
+}
+
+function UnavailableNotice({ title, children }) {
+  return (
+    <section className="admin-unavailable" role="status">
+      <span className="admin-unavailable-icon" aria-hidden="true">!</span>
+      <div><h2>{title}</h2><p>{children}</p></div>
+    </section>
+  );
+}
+
+function FormField({ label, name, value, onChange, ...inputProps }) {
+  return (
+    <label className="admin-field">
+      <span>{label}</span>
+      <input name={name} value={value} onChange={(event) => onChange((current) => ({ ...current, [name]: event.target.value }))} required {...inputProps} />
+    </label>
+  );
+}
+
+function descriptionFor(page) {
+  return {
+    "MA staff": "Directory and account provisioning",
+    "Backup and recovery": "Backup jobs, retention and restore",
+    "Audit logs": "Redacted administrative activity",
+    Monitoring: "Server health and operational metrics",
+    "System reports": "Approved report catalogue and jobs",
+  }[page];
+}
+
+function iconFor(label) {
+  return {
+    Overview: "⌂",
+    "MA staff": "＋",
+    "Backup and recovery": "▣",
+    "Audit logs": "◷",
+    Monitoring: "⌁",
+    "System reports": "▤",
+  }[label];
+}
+
+function initials(name) {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
 }
