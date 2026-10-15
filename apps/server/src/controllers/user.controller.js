@@ -1,28 +1,27 @@
-import { loginUser, registerUser } from "../services/user.service.js";
-
-export async function register(req, res) {
-  try {
-    const user = await registerUser(req.body);
-    res.status(201).json({
-      id: user.id,
-      email: user.email,
-      fullName: user.fullName,
-      role: user.role,
-      studentNumber: user.studentNumber,
-    });
-  } catch (err) {
-    const isValidationError = err?.name === "ZodError";
-    const message = isValidationError
-      ? err.issues?.[0]?.message || "Please check your registration details"
-      : err.message;
-    res.status(400).json({ error: message });
-  }
-}
-
+import * as users from "../services/user.service.js";
 export async function login(req, res) {
-  try {
-    res.json(await loginUser(req.body));
-  } catch (err) {
-    res.status(401).json({ error: err.message || "Unable to sign in" });
-  }
+  res.json(await users.loginUser(req.validated.email, req.validated.password));
+}
+export async function list(req, res) {
+  res.json(await users.listUsers(req.validated));
+}
+export async function register(req, res) {
+  res.status(201).json({ data: await users.createUser(req.validated, req.auth.userId) });
+}
+export async function updateStatus(req, res) {
+  res.json({
+    data: await users.setUserActive(
+      Number(req.params.userId),
+      req.validated.isActive,
+      req.auth.userId,
+    ),
+  });
+}
+export async function changePassword(req, res) {
+  const session = await users.changePassword(
+    req.auth.userId,
+    req.validated.currentPassword,
+    req.validated.password,
+  );
+  res.json({ data: session });
 }

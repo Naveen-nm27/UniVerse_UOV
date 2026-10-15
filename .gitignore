@@ -1,4 +1,6 @@
 node_modules/
+/UniVerse_UOV/
+/.local/
 dist/
 build/
 .env

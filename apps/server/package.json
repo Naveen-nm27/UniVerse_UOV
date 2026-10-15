@@ -1,31 +1,34 @@
 {
-  "name": "@universe/server",
+  "name": "universe-server",
   "version": "1.0.0",
   "private": true,
   "description": "UniVerse UOV API",
   "type": "module",
   "main": "src/server.js",
   "scripts": {
-    "dev": "nodemon src/server.js"
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "test": "node --test test/*.test.js",
+    "test:v04": "node scripts/test-v04.js",
+    "test:docker": "node scripts/test-v04-docker.js --browser",
+    "create:ma": "node scripts/create-ma.js",
+    "test:browser": "node scripts/test-v04.js --browser",
+    "db:repair-ids": "node scripts/repair-generated-ids.js",
+    "db:check-v04": "node scripts/check-v04.js",
+    "db:setup-v04": "node scripts/setup-v04.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
-    "@casl/ability": "^7.0.1",
-    "@universe/shared-permissions": "*",
-    "@universe/shared-types": "*",
-    "@universe/shared-validation": "*",
+    "ansis": "^4.4.0",
     "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
-    "mysql2": "^3.24.3",
+    "mysql2": "^3.15.3",
     "reflect-metadata": "^0.2.2",
-    "typeorm": "^0.3.27",
-    "zod": "^4.5.4"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.14"
+    "sql-highlight": "^6.1.0",
+    "typeorm": "^0.3.31",
+    "zod": "^4.5.4",
+    "pdfkit": "^0.17.2"
   }
 }

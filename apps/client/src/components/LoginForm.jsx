@@ -1,16 +1,15 @@
 import { useState } from "react";
 import { loginUser } from "../api/users";
 
+import { saveSession } from "../api/client";
+
 const dashboardByRole = {
-  student: "/student/dashboard",
-  lecturer: "/lecturer/dashboard",
-  administrator: "/admin",
-  ADMIN: "/admin",
-  admin: "/admin",
-  management_assistant: "/management-assistant/dashboard",
-  hod: "/hod",
+  STUDENT: "/student",
+  MA: "/ma",
+  LECTURER: "/lecturer",
   HOD: "/hod",
-  head_of_department: "/hod",
+  DEAN: "/dean",
+  ADMIN: "/admin",
 };
 
 export default function LoginForm() {
@@ -39,8 +38,7 @@ export default function LoginForm() {
       const session = await loginUser(form);
       const destination = dashboardByRole[session.user.role];
       if (!destination) throw new Error("Your account role is not supported yet.");
-      const storage = form.remember ? localStorage : sessionStorage;
-      storage.setItem("universe_session", JSON.stringify(session));
+      saveSession(session, form.remember);
       window.location.assign(destination);
     } catch (error) {
       setStatus("error");
@@ -51,22 +49,34 @@ export default function LoginForm() {
   return (
     <main className="login-page">
       <section className="login-showcase" aria-label="UniVerse introduction">
-        <div className="brand"><span className="brand-icon">U</span><span>UniVerse</span></div>
+        <div className="brand">
+          <span className="brand-icon">U</span>
+          <span>UniVerse</span>
+        </div>
         <div className="showcase-orbit" aria-hidden="true">
-          <span className="orbit orbit-one" /><span className="orbit orbit-two" />
-          <span className="spark spark-one">✦</span><span className="spark spark-two">✦</span>
+          <span className="orbit orbit-one" />
+          <span className="orbit orbit-two" />
+          <span className="spark spark-one">✦</span>
+          <span className="spark spark-two">✦</span>
           <div className="showcase-monogram">U</div>
         </div>
         <div className="showcase-copy">
           <p className="eyebrow">University of Vavuniya</p>
-          <h1>Your university.<br />One connected space.</h1>
+          <h1>
+            Your university.
+            <br />
+            One connected space.
+          </h1>
           <p>Access your academic services, campus resources, and everyday tools from one place.</p>
         </div>
         <p className="showcase-footer">Learn · Connect · Grow</p>
       </section>
 
       <section className="login-panel" aria-labelledby="login-title">
-        <div className="mobile-brand brand"><span className="brand-icon">U</span><span>UniVerse</span></div>
+        <div className="mobile-brand brand">
+          <span className="brand-icon">U</span>
+          <span>UniVerse</span>
+        </div>
         <div className="login-card">
           <header className="login-header">
             <p className="eyebrow">Welcome back</p>
@@ -74,23 +84,84 @@ export default function LoginForm() {
             <p>Use the account details provided by your Management Assistant.</p>
           </header>
           <form onSubmit={handleSubmit} noValidate>
-            <Field label="Email address" name="email" type="email" value={form.email} onChange={updateField} error={errors.email} placeholder="name@vau.ac.lk" autoComplete="email" />
-            <Field label="Password" name="password" type={showPassword ? "text" : "password"} value={form.password} onChange={updateField} error={errors.password} placeholder="Enter your password" autoComplete="current-password" action={<button type="button" className="password-toggle" onClick={() => setShowPassword((value) => !value)} aria-label={`${showPassword ? "Hide" : "Show"} password`}>{showPassword ? "Hide" : "Show"}</button>} />
+            <Field
+              label="Email address"
+              name="email"
+              type="email"
+              value={form.email}
+              onChange={updateField}
+              error={errors.email}
+              placeholder="name@vau.ac.lk"
+              autoComplete="email"
+            />
+            <Field
+              label="Password"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              value={form.password}
+              onChange={updateField}
+              error={errors.password}
+              placeholder="Enter your password"
+              autoComplete="current-password"
+              action={
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowPassword((value) => !value)}
+                  aria-label={`${showPassword ? "Hide" : "Show"} password`}
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </button>
+              }
+            />
             <div className="form-options">
-              <label className="remember-me"><input type="checkbox" name="remember" checked={form.remember} onChange={updateField} /><span>Keep me signed in</span></label>
+              <label className="remember-me">
+                <input
+                  type="checkbox"
+                  name="remember"
+                  checked={form.remember}
+                  onChange={updateField}
+                />
+                <span>Keep me signed in</span>
+              </label>
               <a href="mailto:support@vau.ac.lk?subject=UniVerse password help">Forgot password?</a>
             </div>
-            {message && <div className="form-message" role="alert">{message}</div>}
-            <button className="login-button" type="submit" disabled={status === "loading"}><span>{status === "loading" ? "Signing you in..." : "Sign in"}</span><span aria-hidden="true">→</span></button>
+            {message && (
+              <div className="form-message" role="alert">
+                {message}
+              </div>
+            )}
+            <button className="login-button" type="submit" disabled={status === "loading"}>
+              <span>{status === "loading" ? "Signing you in..." : "Sign in"}</span>
+              <span aria-hidden="true">→</span>
+            </button>
           </form>
-          <div className="account-note"><span aria-hidden="true">i</span><p>Accounts are created by the Management Assistant. If you need access, please contact your faculty office.</p></div>
+          <div className="account-note">
+            <span aria-hidden="true">i</span>
+            <p>
+              Accounts are created by the Management Assistant. If you need access, please contact
+              your faculty office.
+            </p>
+          </div>
         </div>
-        <footer className="login-footer"><span>© 2026 University of Vavuniya</span><span>Privacy · Help centre</span></footer>
+        <footer className="login-footer">
+          <span>© 2026 University of Vavuniya</span>
+          <span>Privacy · Help centre</span>
+        </footer>
       </section>
     </main>
   );
 }
 
 function Field({ label, name, error, action, ...props }) {
-  return <label className="field"><span className="field-label">{label}</span><span className="input-wrap"><input name={name} aria-invalid={Boolean(error)} {...props} />{action}</span>{error && <span className="field-error">{error}</span>}</label>;
+  return (
+    <label className="field">
+      <span className="field-label">{label}</span>
+      <span className="input-wrap">
+        <input name={name} aria-invalid={Boolean(error)} {...props} />
+        {action}
+      </span>
+      {error && <span className="field-error">{error}</span>}
+    </label>
+  );
 }

@@ -10,6 +10,11 @@
   "scripts": {
     "dev:client": "npm run dev -w apps/client",
     "dev:server": "npm run dev -w apps/server",
+    "test": "npm test -w apps/server",
+    "lint": "npm run lint -w apps/client",
+    "build": "npm run build -w apps/client",
+    "format": "prettier --write apps/client/src apps/server/src apps/server/scripts apps/server/test packages",
+    "format:check": "prettier --check apps/client/src apps/server/src apps/server/scripts apps/server/test packages",
     "dev": "concurrently \"npm:dev:client\" \"npm:dev:server\""
   },
   "repository": {
@@ -24,9 +29,15 @@
   },
   "homepage": "https://github.com/Naveen-nm27/UniVerse_UOV#readme",
   "devDependencies": {
-    "concurrently": "^10.0.5"
+    "concurrently": "^10.0.5",
+    "prettier": "^3.9.9"
   },
   "allowScripts": {
     "bcrypt@6.0.0": true
+  },
+  "dependencies": {
+    "ansis": "^4.4.0",
+    "sql-highlight": "^6.1.0",
+    "typeorm": "^0.3.31"
   }
 }

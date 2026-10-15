@@ -1,31 +1,36 @@
 import express from "express";
+import cors from "cors";
 import userRoutes from "./routes/user.routes.js";
-
+import dashboardRoutes from "./routes/dashboard.routes.js";
+import academicRoutes from "./routes/academic.routes.js";
+import lookupRoutes from "./routes/lookup.routes.js";
+import studentRoutes from "./routes/student.routes.js";
+import lecturerRoutes from "./routes/lecturer.routes.js";
+import staffRoutes from "./routes/staff.routes.js";
+import resultRoutes from "./routes/result.routes.js";
+import { notFound } from "./middleware/not-found.js";
+import { errorHandler } from "./middleware/error-handler.js";
 const app = express();
-
-const allowedOrigins = new Set([
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-]);
-
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (allowedOrigins.has(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader("Vary", "Origin");
-  }
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-  if (req.method === "OPTIONS") return res.sendStatus(204);
-  next();
-});
-
-app.use(express.json());
-
-app.get("/health", (req, res) => {
-  res.json({ status: "ok" });
-});
-
+app.disable("x-powered-by");
+app.use(
+  cors({
+    origin: (process.env.FRONTEND_URL || "http://localhost:5173,http://127.0.0.1:5173")
+      .split(",")
+      .map((origin) => origin.trim()),
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
+app.use(express.json({ limit: "2mb" }));
+app.get("/health", (req, res) => res.json({ status: "ok", service: "UniVerse UOV Backend" }));
 app.use("/api/users", userRoutes);
-
+app.use("/api/student", studentRoutes);
+app.use("/api/lecturer", lecturerRoutes);
+app.use("/api/staff", staffRoutes);
+app.use("/api/ma/results", resultRoutes);
+app.use("/api/ma", dashboardRoutes);
+app.use("/api/ma/academic", academicRoutes);
+app.use("/api/ma/lookups", lookupRoutes);
+app.use(notFound);
+app.use(errorHandler);
 export default app;
