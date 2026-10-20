@@ -10,14 +10,25 @@ import {
   getPassingGrades,
 } from "./academic-calculation.policy.js";
 import { mapResult, mapAssessment } from "./student-dto.js";
+import { getStudentSubjects } from "./student-subjects.service.js";
 
 export async function getStudentDashboard(userId, semesterId = null) {
   const student = await getStudentContext(userId);
-  const [allResults, assessments, batchPerformance] = await Promise.all([
-    getPublishedResults(userId),
-    getStudentAssessments(userId, semesterId),
-    AppDataSource.query(
-      `WITH ranked_results AS (
+  const [allResults, assessments, subjects, enrolledSemesters, batchPerformance] =
+    await Promise.all([
+      getPublishedResults(userId),
+      getStudentAssessments(userId, semesterId),
+      getStudentSubjects(userId, semesterId),
+      AppDataSource.query(
+        `SELECT DISTINCT sem.semester_id AS id, sem.academic_year AS academicYear,
+        sem.semester_name AS name, sem.start_date AS startDate
+       FROM ENROLLMENTS e JOIN MODULE_OFFERINGS mo ON mo.offering_id=e.offering_id
+       JOIN SEMESTERS sem ON sem.semester_id=mo.semester_id
+       WHERE e.student_id=? ORDER BY sem.start_date, sem.semester_id`,
+        [userId],
+      ),
+      AppDataSource.query(
+        `WITH ranked_results AS (
       SELECT m.module_id AS moduleId, m.module_code AS moduleCode, m.module_name AS moduleTitle,
         fr.final_grade AS finalGrade, ROW_NUMBER() OVER (
           PARTITION BY e.student_id, m.module_id ORDER BY batch_sem.start_date DESC, e.attempt_number DESC, fr.published_at DESC, fr.result_id DESC
@@ -33,15 +44,13 @@ export async function getStudentDashboard(userId, semesterId = null) {
         AND (? IS NULL OR mo.semester_id = ?)
         AND EXISTS (SELECT 1 FROM ENROLLMENTS own_e
           INNER JOIN MODULE_OFFERINGS own_mo ON own_mo.offering_id = own_e.offering_id
-          INNER JOIN FINAL_RESULTS own_fr ON own_fr.enrollment_id = own_e.enrollment_id
-          INNER JOIN EXAMS own_ex ON own_ex.exam_id=own_fr.exam_id AND own_ex.offering_id=own_e.offering_id
-          WHERE own_e.student_id = ? AND own_mo.module_id = m.module_id AND own_fr.status = 'PUBLISHED'
+          WHERE own_e.student_id = ? AND own_mo.module_id = m.module_id
             AND (? IS NULL OR own_mo.semester_id = ?))
     ) SELECT moduleId, moduleCode, moduleTitle, finalGrade, COUNT(*) AS gradeCount
       FROM ranked_results WHERE attemptRank = 1 GROUP BY moduleId, moduleCode, moduleTitle, finalGrade ORDER BY moduleCode`,
-      [student.batchId, semesterId, semesterId, userId, semesterId, semesterId],
-    ),
-  ]);
+        [student.batchId, semesterId, semesterId, userId, semesterId, semesterId],
+      ),
+    ]);
   const visible = allResults.filter(
     (r) => semesterId == null || Number(r.semesterId) === Number(semesterId),
   );
@@ -64,16 +73,23 @@ export async function getStudentDashboard(userId, semesterId = null) {
     semesters.set(key, { id: key, label: `${row.academicYear} - ${row.semesterName}` });
   }
   const batchModules = new Map();
+  semesters.clear();
+  for (const semester of enrolledSemesters) {
+    semesters.set(Number(semester.id), {
+      id: Number(semester.id),
+      label: `${semester.academicYear} - ${semester.name}`,
+    });
+  }
   const gradeOrder = ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "F"];
   for (const row of batchPerformance) {
-    if (!batchModules.has(row.moduleId))
-      batchModules.set(row.moduleId, {
+    if (!batchModules.has(Number(row.moduleId)))
+      batchModules.set(Number(row.moduleId), {
         moduleCode: row.moduleCode,
         moduleTitle: row.moduleTitle,
         studentCount: 0,
         gradeCounts: [],
       });
-    const subject = batchModules.get(row.moduleId);
+    const subject = batchModules.get(Number(row.moduleId));
     subject.studentCount += Number(row.gradeCount);
     subject.gradeCounts.push({ grade: row.finalGrade, count: Number(row.gradeCount) });
   }
@@ -137,6 +153,11 @@ export async function getStudentDashboard(userId, semesterId = null) {
     semesters: [...semesters.values()].reverse(),
     selectedSemesterId: semesterId == null ? null : Number(semesterId),
     batchPerformance: [...batchModules.values()],
+    subjects: subjects.map((subject) => ({
+      ...subject,
+      gradeCounts: batchModules.get(subject.moduleId)?.gradeCounts || [],
+      studentCount: batchModules.get(subject.moduleId)?.studentCount || 0,
+    })),
     publishedResults: visible.map((row) => mapResult(row, student)),
     recentAssessments: assessments.map((row) => mapAssessment(row, student)),
     latestResults: [...visible]

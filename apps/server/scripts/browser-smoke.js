@@ -172,11 +172,70 @@ export async function runBrowserChecks(apiOrigin, credentialVersion) {
     await page("/ma/results", "document.querySelectorAll('.ma-table tbody tr').length>0");
     console.log("Browser: MA accounts, academic resources, grade context and workflow rendered.");
     await actor(7, "STUDENT");
-    await page("/student", "document.querySelectorAll('.student-result-subject').length>0");
-    await evaluate("document.querySelector('.student-result-subject-heading').click()");
-    await wait("Boolean(document.querySelector('.student-attempt-card'))");
+    await page("/student", "document.querySelectorAll('.student-subject-result').length>0");
+    assert.equal(await evaluate("document.querySelector('#assessments')"), null);
+    assert.equal(
+      await evaluate("document.body.innerText.includes('Results by study year')"),
+      false,
+    );
+    assert.ok(await evaluate("document.querySelectorAll('.student-subject-result').length>0"));
+    assert.equal(
+      await evaluate(
+        "document.querySelector('.student-subject-result').querySelectorAll('.student-subject-icas dt').length",
+      ),
+      3,
+    );
+    assert.equal(
+      await evaluate("document.querySelectorAll('.student-subject-list details').length"),
+      0,
+    );
+    await evaluate(
+      "document.querySelector('.student-subject-result button').focus(); document.querySelector('.student-subject-result button').click()",
+    );
+    await wait("Boolean(document.querySelector('.student-subject-dialog[open] canvas'))");
+    assert.ok(
+      await evaluate(
+        "document.querySelector('.student-subject-dialog canvas').getBoundingClientRect().width>0",
+      ),
+    );
+    await command("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape" });
+    await wait("!document.querySelector('.student-subject-dialog')");
+    assert.ok(
+      await evaluate(
+        "document.activeElement===document.querySelector('.student-subject-result button')",
+      ),
+    );
+    await command("Emulation.setDeviceMetricsOverride", {
+      width: 375,
+      height: 812,
+      deviceScaleFactor: 1,
+      mobile: true,
+    });
+    await evaluate("document.querySelector('.student-subject-result button').click()");
+    await wait("Boolean(document.querySelector('.student-subject-dialog[open] canvas'))");
+    assert.ok(
+      await evaluate(
+        "document.querySelector('.student-subject-dialog').getBoundingClientRect().right<=window.innerWidth",
+      ),
+    );
+    await evaluate("document.querySelector('.student-subject-dialog button').click()");
+    await wait("!document.querySelector('.student-subject-dialog')");
+    await command("Emulation.setDeviceMetricsOverride", {
+      width: 1280,
+      height: 900,
+      deviceScaleFactor: 1,
+      mobile: false,
+    });
+    await evaluate(
+      "document.querySelector('.student-semester select').value='1';document.querySelector('.student-semester select').dispatchEvent(new Event('change',{bubbles:true}))",
+    );
+    await wait(
+      "document.querySelectorAll('#results .student-subject-result').length>0 && document.querySelector('.student-semester select').value==='1'",
+    );
     await page("/ma", "document.body.innerText.includes('Workspace unavailable')");
-    console.log("Browser: student published results, attempt detail and role denial rendered.");
+    console.log(
+      "Browser: combined subject cards, semester selection, graph dialog and role denial rendered.",
+    );
     await actor(2, "LECTURER");
     await page("/lecturer", "document.querySelectorAll('.ma-card-value').length===3");
     await page("/lecturer/modules", "document.querySelectorAll('.ma-table tbody tr').length===2");

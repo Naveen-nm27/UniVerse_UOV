@@ -116,6 +116,38 @@ test(
       await db.query(
         "INSERT INTO TIMETABLE_SLOTS (offering_id,hall_id,day_of_week,start_time,end_time,effective_from,effective_until,updated_by) VALUES (1,1,7,'09:00','10:00','2026-10-01','2026-10-31',1)",
       );
+      await t.test(
+        "Subject list includes pending results without revealing unreleased ICA grades",
+        async () => {
+          const published = await req("/api/student/dashboard", { actor: 7 });
+          assert.equal(published.status, 200);
+          published.data = published.data.data;
+          assert.equal(published.data.subjects.length, 2);
+          const programming = published.data.subjects.find(
+            (subject) => subject.moduleCode === "ICT101",
+          );
+          assert.equal(programming.finalGrade, "A");
+          assert.deepEqual(
+            programming.assessments.map((ica) => ica.number),
+            [1, 2, 3],
+          );
+          assert.equal(programming.assessments[0].grade, "A");
+          assert.equal(programming.assessments[1].status, "Not recorded");
+          assert.equal(programming.studentCount, 1);
+          const pending = await req("/api/student/dashboard", { actor: 8 });
+          assert.equal(pending.status, 200);
+          pending.data = pending.data.data;
+          assert.equal(pending.data.subjects.length, 1);
+          assert.equal(pending.data.subjects[0].finalGrade, null);
+          assert.equal(pending.data.subjects[0].assessments[0].grade, null);
+          assert.equal(pending.data.subjects[0].assessments[0].status, "Done · awaiting release");
+          assert.equal(pending.data.subjects[0].studentCount, 1);
+          assert.ok(pending.data.semesters.some((semester) => semester.id === 1));
+          const filtered = await req("/api/student/dashboard?semesterId=999", { actor: 8 });
+          assert.equal(filtered.status, 200);
+          assert.deepEqual(filtered.data.data.subjects, []);
+        },
+      );
       await t.test("V04 entity names and mapped columns are unique and present", async () => {
         assert.equal(
           new Set(db.entityMetadatas.map((m) => m.name)).size,

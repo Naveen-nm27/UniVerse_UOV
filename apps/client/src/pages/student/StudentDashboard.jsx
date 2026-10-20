@@ -1,9 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  downloadStudentResults,
-  getStudentDashboard,
-  getStudentResultDetails,
-} from "../../api/student";
+import { downloadStudentResults, getStudentDashboard } from "../../api/student";
 import { signOut } from "../../api/client";
 import "./StudentDashboard.css";
 import GradeDistributionChart from "../../components/GradeDistributionChart";
@@ -12,15 +8,12 @@ import { StudentGpaChart } from "../../components/charts/RoleDashboardCharts";
 const studentNavigation = [
   ["Overview", "overview"],
   ["Results", "results"],
-  ["Assessments", "assessments"],
   ["Progress", "progress"],
   ["Downloads", "downloads"],
 ];
 
 export default function StudentDashboard() {
   const [dashboard, setDashboard] = useState(null);
-  const [results, setResults] = useState([]);
-  const [assessments, setAssessments] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
@@ -50,15 +43,13 @@ export default function StudentDashboard() {
         setLoading(true);
         setError("");
         setDashboard(null);
-        setResults([]);
-        setAssessments([]);
+
         return getStudentDashboard(semesterId, { signal: controller.signal });
       })
       .then((data) => {
         if (!controller.signal.aborted) {
           setDashboard(data);
-          setResults(data.publishedResults);
-          setAssessments(data.recentAssessments);
+
           setSemesters(data.semesters);
         }
       })
@@ -157,9 +148,9 @@ export default function StudentDashboard() {
             </p>
           )}
           <label className="student-semester">
-            View study period{" "}
+            View semester{" "}
             <select value={semesterId} onChange={(event) => setSemesterId(event.target.value)}>
-              <option value="">All published periods</option>
+              <option value="">All semesters</option>
               {semesters.map((semester) => (
                 <option key={semester.id} value={semester.id}>
                   {semester.label}
@@ -212,12 +203,13 @@ export default function StudentDashboard() {
           </section>
         )}
         <section className="student-grid" id="progress">
-          <article className="student-panel">
-            <StudentTitle eyebrow="Batch performance" title="Grades by subject" />
+          <article className="student-panel" id="results">
+            <StudentTitle eyebrow="Results and batch performance" title="Grades by subject" />
             <p className="student-panel-description">
-              Open a subject to see the published grades in your batch.
+              Results, repeat attempts and three ICAs for each subject. View a graph to compare
+              published batch grades.
             </p>
-            <GradeDistributionChart rows={dashboard?.batchPerformance || []} />
+            <GradeDistributionChart rows={dashboard?.subjects || []} loading={loading} />
           </article>
           <article className="student-panel student-credit">
             <StudentTitle
@@ -239,31 +231,6 @@ export default function StudentDashboard() {
               )}
             </p>
           </article>
-        </section>
-        <section className="student-panel" id="results">
-          <div className="student-panel-head">
-            <StudentTitle eyebrow="Published results" title="Results by study year" />
-            <a href="#downloads">Download summary</a>
-          </div>
-          <StudentResults rows={results} loading={loading} />
-        </section>
-        <section className="student-panel" id="assessments">
-          <StudentTitle eyebrow="Assessment marks" title="Released assessments" />
-          <div className="student-assessments">
-            {assessments.map((item) => (
-              <div className="student-assessment" key={item.assessmentId}>
-                <div>
-                  <strong>{item.module.code}</strong>
-                  <span>{item.title}</span>
-                </div>
-                <b>{item.grade || "—"}</b>
-                <small>{item.semester.label}</small>
-              </div>
-            ))}
-            {!loading && !assessments.length && (
-              <p className="student-empty">No released assessments are available yet.</p>
-            )}
-          </div>
         </section>
         <section className="student-download" id="downloads">
           <div>
@@ -296,196 +263,6 @@ function StudentTitle({ eyebrow, title }) {
       <h2>{title}</h2>
     </div>
   );
-}
-function StudentResults({ rows, loading }) {
-  if (!rows.length)
-    return (
-      <p className="student-empty">
-        {loading ? "Loading results…" : "No published results are available yet."}
-      </p>
-    );
-
-  const byYear = new Map();
-  const sortedRows = [...rows].sort(
-    (a, b) =>
-      (a.semester.studyYear ?? Infinity) - (b.semester.studyYear ?? Infinity) ||
-      (a.semester.semesterNumber ?? Infinity) - (b.semester.semesterNumber ?? Infinity) ||
-      a.module.code.localeCompare(b.module.code) ||
-      b.attemptNumber - a.attemptNumber,
-  );
-
-  for (const row of sortedRows) {
-    const yearKey = row.semester.studyYear ?? "other";
-    if (!byYear.has(yearKey)) byYear.set(yearKey, new Map());
-    const semesters = byYear.get(yearKey);
-    if (!semesters.has(row.semester.id)) {
-      semesters.set(row.semester.id, { label: row.semester.label, rows: [] });
-    }
-    semesters.get(row.semester.id).rows.push(row);
-  }
-
-  return (
-    <div className="student-results-by-year">
-      {[...byYear].map(([year, semesters]) => (
-        <section className="student-result-year" key={year}>
-          <h3>{year === "other" ? "Other periods" : `Year ${String(year).padStart(2, "0")}`}</h3>
-          {[...semesters].map(([id, semester]) => (
-            <div className="student-result-semester" key={id}>
-              <h4>{semester.label}</h4>
-              <div className="student-result-subjects">
-                {semester.rows
-                  .filter(
-                    (row, index, all) =>
-                      all.findIndex((item) => item.module.id === row.module.id) === index,
-                  )
-                  .map((row) => (
-                    <StudentResultSubject key={row.module.id} row={row} />
-                  ))}
-              </div>
-            </div>
-          ))}
-        </section>
-      ))}
-    </div>
-  );
-}
-function StudentResultSubject({ row }) {
-  const [open, setOpen] = useState(false);
-  const [details, setDetails] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const panelId = `result-details-${row.resultId}`;
-  async function loadDetails() {
-    setLoading(true);
-    setError("");
-    try {
-      setDetails(await getStudentResultDetails(row.resultId));
-    } catch (requestError) {
-      setError(requestError.message);
-    } finally {
-      setLoading(false);
-    }
-  }
-  function toggle() {
-    setOpen(!open);
-    if (!open && !details && !loading) loadDetails();
-  }
-  return (
-    <article className="student-result-subject">
-      <button
-        type="button"
-        className="student-result-subject-heading"
-        aria-expanded={open}
-        aria-controls={panelId}
-        onClick={toggle}
-      >
-        <span className="student-result-subject-code">{row.module.code}</span>
-        <strong>{row.module.title}</strong>
-        <span className="student-result-subject-toggle" aria-hidden="true">
-          {open ? "−" : "+"}
-        </span>
-      </button>
-      <section
-        hidden={!open}
-        id={panelId}
-        className="student-attempt-history"
-        aria-label={`${row.module.code} attempt history`}
-        aria-busy={loading}
-      >
-        <p className="student-result-credits">Module credits: {row.module.credits}</p>
-        <h4>{row.module.code} · All attempts</h4>
-        {loading && <p role="status">Loading attempt details…</p>}
-        {error && (
-          <div role="alert">
-            <p>{error}</p>
-            <button type="button" className="student-details-button" onClick={loadDetails}>
-              Try again
-            </button>
-          </div>
-        )}
-        {details && !loading && !error && (
-          <>
-            {!details.attemptHistory?.length && <p>No attempt history is available.</p>}
-            {(details.attemptHistory || []).map((attempt) => (
-              <article
-                className="student-attempt-card"
-                key={`${attempt.enrollmentId}-${attempt.resultId ?? "pending"}`}
-              >
-                <h5>
-                  Attempt {attempt.attemptNumber}
-                  {attempt.isCurrent ? " · Current" : ""}
-                </h5>
-                <dl>
-                  <div>
-                    <dt>Study period</dt>
-                    <dd>
-                      {attempt.semester.label} · {attempt.semester.academicYear}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Enrollment status</dt>
-                    <dd>{attempt.enrollmentStatus}</dd>
-                  </div>
-                  <div>
-                    <dt>Enrolled</dt>
-                    <dd>{attemptDate(attempt.enrolledAt)}</dd>
-                  </div>
-                  <div>
-                    <dt>Result</dt>
-                    <dd>{attempt.resultId == null ? "Awaiting publication" : "Published"}</dd>
-                  </div>
-                  <div>
-                    <dt>Final grade</dt>
-                    <dd>{attempt.finalGrade ?? "—"}</dd>
-                  </div>
-                  <div>
-                    <dt>Grade point</dt>
-                    <dd>{studentNumber(attempt.gradePoint)}</dd>
-                  </div>
-                  <div>
-                    <dt>Exam</dt>
-                    <dd>
-                      {attempt.examType ?? "—"}
-                      {attempt.isResit ? " · Resit" : ""}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Exam date</dt>
-                    <dd>{attemptDate(attempt.examDate)}</dd>
-                  </div>
-                  <div>
-                    <dt>Exam grade</dt>
-                    <dd>{attempt.examGrade ?? "—"}</dd>
-                  </div>
-                  <div>
-                    <dt>Published</dt>
-                    <dd>{attemptDate(attempt.publishedAt)}</dd>
-                  </div>
-                </dl>
-                <h6>ICA assessments</h6>
-                {attempt.assessments.length ? (
-                  <ul>
-                    {attempt.assessments.map((assessment) => (
-                      <li key={assessment.assessmentId}>
-                        {assessment.title}: <b>{assessment.grade ?? "—"}</b>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p>No released assessments are available for this attempt.</p>
-                )}
-              </article>
-            ))}
-          </>
-        )}
-      </section>
-    </article>
-  );
-}
-function attemptDate(value) {
-  if (!value) return "—";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleDateString("en-GB");
 }
 function studentNumber(value) {
   return value == null ? "—" : Number(value).toFixed(2);

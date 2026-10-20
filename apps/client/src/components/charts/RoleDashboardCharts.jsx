@@ -22,8 +22,8 @@ export function ResultStatusChart({ rows = [], queue = false, scope = "your auth
 export function StudentGpaChart({ rows = [] }) {
   return (
     <DashboardChart
-      title="GPA by study period"
-      description="Published results for the selected periods. Unavailable GPA values remain gaps."
+      title="GPA by semester"
+      description="Published results for the selected semesters. Unavailable GPA values remain gaps."
       type="line"
       labels={rows.map((row) => row.label)}
       datasets={[{ label: "GPA", data: rows.map((row) => row.value) }]}
