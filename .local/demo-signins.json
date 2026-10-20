@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:5173",
+  "accounts": [
+    {
+      "role": "MA",
+      "email": "demo.ma@example.test",
+      "password": "UniVerseDemo@2026!"
+    },
+    {
+      "role": "ADMIN",
+      "email": "demo.admin@example.test",
+      "password": "UniVerseDemo@2026!"
+    },
+    {
+      "role": "HOD",
+      "email": "demo.hod@example.test",
+      "password": "UniVerseDemo@2026!"
+    },
+    {
+      "role": "DEAN",
+      "email": "demo.dean@example.test",
+      "password": "UniVerseDemo@2026!"
+    },
+    {
+      "role": "LECTURER",
+      "email": "demo.lecturer@example.test",
+      "password": "UniVerseDemo@2026!"
+    },
+    {
+      "role": "STUDENT",
+      "email": "demo.student@example.test",
+      "password": "UniVerseDemo@2026!"
+    }
+  ],
+  "note": "Fictional local test accounts and academic records; development grade scale only."
+}

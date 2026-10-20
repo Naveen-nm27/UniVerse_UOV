@@ -1,6 +1,7 @@
 import { AppDataSource as db } from "../data-source.js";
 import { ApiError } from "../utils/api-error.js";
 import { campusTimestamp } from "../utils/campus-time.js";
+
 export async function staffScope(userId, role) {
   if (["MA", "ADMIN"].includes(role)) return { departmentId: null, departmentName: null };
   const sql =
@@ -18,11 +19,13 @@ export async function staffScope(userId, role) {
     );
   return scope;
 }
+
 const resultFrom = `FROM FINAL_RESULTS fr JOIN ENROLLMENTS e ON e.enrollment_id=fr.enrollment_id
  JOIN EXAMS ex ON ex.exam_id=fr.exam_id AND ex.offering_id=e.offering_id
  JOIN MODULE_OFFERINGS mo ON mo.offering_id=e.offering_id JOIN MODULES m ON m.module_id=mo.module_id
  JOIN SEMESTERS sem ON sem.semester_id=mo.semester_id JOIN PROGRAMME_SEMESTERS ps ON ps.programme_semester_id=m.programme_semester_id
  JOIN PROGRAMMES p ON p.programme_id=ps.programme_id JOIN STUDENTS s ON s.user_id=e.student_id JOIN USERS u ON u.user_id=s.user_id`;
+
 export async function staffResults(userId, role, q = {}) {
   const scope = await staffScope(userId, role),
     args = [];
@@ -58,6 +61,7 @@ export async function staffResults(userId, role, q = {}) {
     meta: { page, pageSize, total: Number(count.total) },
   };
 }
+
 export async function staffHistory(userId, role, resultId) {
   const scope = await staffScope(userId, role);
   const args = [resultId];
@@ -76,6 +80,7 @@ export async function staffHistory(userId, role, resultId) {
   );
   return rows.map((r) => ({ ...r, changedAt: campusTimestamp(r.changedAt) }));
 }
+
 export async function staffDashboard(userId, role) {
   const scope = await staffScope(userId, role),
     args = [];
@@ -103,6 +108,7 @@ export async function staffDashboard(userId, role) {
     integrations: { backups: false, monitoring: false, reports: false, reportApprovals: false },
   };
 }
+
 export async function audit(q = {}) {
   const page = q.page || 1,
     pageSize = q.pageSize || 25;
@@ -120,6 +126,7 @@ export async function audit(q = {}) {
     meta: { page, pageSize, total: Number(count.total) },
   };
 }
+
 export async function maStaff(q = {}) {
   const page = q.page || 1,
     pageSize = q.pageSize || 25,

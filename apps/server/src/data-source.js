@@ -76,8 +76,6 @@ export const AppDataSource = new DataSource({
 });
 export async function initializeDatabase() {
   await AppDataSource.initialize();
-  // DATETIME values are stored in campus local time. Configure both the first
-  // connection and every additional connection created by the MySQL pool.
   AppDataSource.driver.pool.on("connection", (connection) => {
     connection.query("SET SESSION time_zone = '+05:30'");
   });

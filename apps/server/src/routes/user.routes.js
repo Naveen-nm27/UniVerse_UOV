@@ -18,7 +18,9 @@ import {
 } from "@universe/shared-validation";
 import { requirePermission } from "../middleware/require-permission.js";
 import { z } from "zod";
+
 const router = Router();
+
 router.post("/login", validate(loginSchema), login);
 router.get("/me", authenticate, (req, res) => res.json({ data: req.user }));
 router.post("/password", authenticate, validate(passwordSchema), changePassword);
@@ -32,4 +34,5 @@ router.patch(
   validate(z.object({ isActive: z.boolean() }).strict()),
   updateStatus,
 );
+
 export default router;

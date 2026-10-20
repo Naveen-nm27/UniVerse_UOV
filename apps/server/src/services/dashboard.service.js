@@ -2,6 +2,7 @@ import { AppDataSource } from "../data-source.js";
 import { ApiError } from "../utils/api-error.js";
 import { getSchema } from "./schema.service.js";
 import { campusDate } from "../utils/campus-time.js";
+
 export async function getMaDashboard(userId) {
   const [user, counts, queue] = await Promise.all([
     AppDataSource.getRepository("User").findOneBy({ userId }),
@@ -11,9 +12,13 @@ export async function getMaDashboard(userId) {
     AppDataSource.query(`SELECT status, COUNT(*) AS count FROM FINAL_RESULTS
       WHERE status IN ('ENTERED', 'VALIDATED', 'WITH_DEAN_OFFICE', 'RETURNED') GROUP BY status`),
   ]);
+
   if (!user) throw new ApiError(404, "USER_NOT_FOUND", "User account not found.");
+
   const schema = await getSchema();
+
   let todayLectureSessions = null;
+  
   if (schema.has("LECTURE_SESSIONS")) {
     const [row] = await AppDataSource.query(
       "SELECT COUNT(*) AS total FROM LECTURE_SESSIONS WHERE session_date=?",
@@ -21,6 +26,7 @@ export async function getMaDashboard(userId) {
     );
     todayLectureSessions = Number(row.total);
   }
+
   return {
     profile: { fullName: user.name, officeName: "Academic administration" },
     summary: {
@@ -41,4 +47,5 @@ export async function getMaDashboard(userId) {
     },
     generatedAt: new Date().toISOString(),
   };
+  
 }
