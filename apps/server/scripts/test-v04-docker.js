@@ -6,6 +6,7 @@ import mysql from "mysql2/promise";
 import dotenv from "dotenv";
 dotenv.config({ path: new URL("../.env", import.meta.url), quiet: true });
 const target = `universe_integration_test_${randomBytes(6).toString("hex")}`;
+const seedDemoTest = process.argv.includes("--seed-demo");
 let connection,
   created = false;
 try {
@@ -29,18 +30,23 @@ try {
     ...process.env,
     DB_NAME: target,
     UNIVERSE_V04_TEST: "1",
+    UNIVERSE_DEMO_SEED_TEST: seedDemoTest ? "1" : "0",
     UNIVERSE_BROWSER_SMOKE: process.argv.includes("--browser") ? "1" : "0",
     JWT_SECRET: "isolated-docker-v04-test-secret",
     PASSING_GRADES: "A,B,C",
     GPA_REPEAT_POLICY: "LATEST",
   };
   await new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, ["--test", "test/v04-integration.test.js"], {
-      cwd: fileURLToPath(new URL("..", import.meta.url)),
-      env,
-      windowsHide: true,
-      stdio: "inherit",
-    });
+    const child = spawn(
+      process.execPath,
+      ["--test", seedDemoTest ? "test/demo-seed.test.js" : "test/v04-integration.test.js"],
+      {
+        cwd: fileURLToPath(new URL("..", import.meta.url)),
+        env,
+        windowsHide: true,
+        stdio: "inherit",
+      },
+    );
     child.on("error", reject);
     child.on("exit", (code) =>
       code === 0 ? resolve() : reject(new Error(`Docker fixture checks exited ${code}`)),
