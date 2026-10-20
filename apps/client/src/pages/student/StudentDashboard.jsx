@@ -6,6 +6,8 @@ import {
 } from "../../api/student";
 import { signOut } from "../../api/client";
 import "./StudentDashboard.css";
+import GradeDistributionChart from "../../components/GradeDistributionChart";
+import { StudentGpaChart } from "../../components/charts/RoleDashboardCharts";
 
 const studentNavigation = [
   ["Overview", "overview"],
@@ -204,13 +206,18 @@ export default function StudentDashboard() {
             detail="Available to view"
           />
         </section>
+        {dashboard && (
+          <section className="student-panel" aria-label="GPA trend">
+            <StudentGpaChart rows={dashboard.gpaTrend} />
+          </section>
+        )}
         <section className="student-grid" id="progress">
           <article className="student-panel">
             <StudentTitle eyebrow="Batch performance" title="Grades by subject" />
             <p className="student-panel-description">
               Open a subject to see the published grades in your batch.
             </p>
-            <StudentBatchChart rows={dashboard?.batchPerformance || []} />
+            <GradeDistributionChart rows={dashboard?.batchPerformance || []} />
           </article>
           <article className="student-panel student-credit">
             <StudentTitle
@@ -479,91 +486,6 @@ function attemptDate(value) {
   if (!value) return "—";
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "—" : date.toLocaleDateString("en-GB");
-}
-function StudentBatchChart({ rows }) {
-  if (!rows.length)
-    return (
-      <div className="student-chart-empty">
-        Batch grades will appear when published results are available.
-      </div>
-    );
-
-  return (
-    <div className="student-subject-grid">
-      {rows.map((subject) => {
-        const largestCount = Math.max(1, ...subject.gradeCounts.map(({ count }) => count));
-        const tickStep = Math.max(1, Math.ceil(largestCount / 4));
-        const axisMax = Math.ceil(largestCount / tickStep) * tickStep;
-        const ticks = Array.from(
-          { length: axisMax / tickStep + 1 },
-          (_, index) => axisMax - index * tickStep,
-        );
-        const accessibleCounts = subject.gradeCounts
-          .map(({ grade, count }) => `${grade}: ${count}`)
-          .join(", ");
-
-        return (
-          <details className="student-subject-card" key={subject.moduleCode}>
-            <summary>
-              <span className="student-subject-code">{subject.moduleCode}</span>
-              <strong>{subject.moduleTitle}</strong>
-              <small>
-                {subject.studentCount} student{subject.studentCount === 1 ? "" : "s"} with a
-                published result
-              </small>
-              <span className="student-subject-toggle" aria-hidden="true">
-                +
-              </span>
-            </summary>
-            <div
-              className="student-grade-chart"
-              role="img"
-              aria-label={`${subject.moduleTitle} grade counts: ${accessibleCounts}. Latest published attempt counted for each student.`}
-            >
-              <div
-                className="student-grade-figure"
-                style={{ minWidth: `${Math.max(190, subject.gradeCounts.length * 38 + 32)}px` }}
-              >
-                <span className="student-grade-y-title">Count</span>
-                <div className="student-grade-plot">
-                  <div className="student-grade-yaxis">
-                    {ticks.map((tick) => (
-                      <span key={tick}>{tick}</span>
-                    ))}
-                  </div>
-                  <div className="student-grade-area">
-                    <div className="student-grade-grid" aria-hidden="true">
-                      {ticks.map((tick) => (
-                        <span key={tick} />
-                      ))}
-                    </div>
-                    <div className="student-grade-bars">
-                      {subject.gradeCounts.map(({ grade, count }) => {
-                        const height = `${(count / axisMax) * 100}%`;
-                        return (
-                          <div className="student-grade-column" key={grade}>
-                            <strong style={{ bottom: `calc(${height} + 4px)` }}>{count}</strong>
-                            <span style={{ height }} />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-                <div className="student-grade-xaxis">
-                  {subject.gradeCounts.map(({ grade }) => (
-                    <b key={grade}>{grade}</b>
-                  ))}
-                </div>
-                <span className="student-grade-x-title">Grade</span>
-              </div>
-              <p>Latest published attempt counted once per student.</p>
-            </div>
-          </details>
-        );
-      })}
-    </div>
-  );
 }
 function studentNumber(value) {
   return value == null ? "—" : Number(value).toFixed(2);

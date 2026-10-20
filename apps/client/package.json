@@ -10,11 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
+    "@universe/shared-permissions": "*",
     "@universe/shared-types": "*",
     "@universe/shared-validation": "*",
-    "@universe/shared-permissions": "*"
+    "chart.js": "^4.5.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.1.0",

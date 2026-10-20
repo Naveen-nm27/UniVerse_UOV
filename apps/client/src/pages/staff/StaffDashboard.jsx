@@ -3,6 +3,7 @@ import Workspace from "../../components/Workspace";
 import { RequestState, Table, Pagination } from "../../components/RemoteData";
 import { useRemote } from "../../hooks/use-remote";
 import { queryString } from "../../api/client";
+import { ResultStatusChart } from "../../components/charts/RoleDashboardCharts";
 const column = (key, label) => ({ key, label });
 export default function StaffDashboard({ role }) {
   const root = role.toLowerCase(),
@@ -75,6 +76,10 @@ export default function StaffDashboard({ role }) {
                       {records.data.data.summary.activeMaStaff}
                     </p>
                   )}
+                  <ResultStatusChart
+                    rows={records.data.data.resultCounts}
+                    scope={role === "ADMIN" ? "the university" : "your department"}
+                  />
                   <h3>Result statuses</h3>
                   <Table
                     rows={records.data.data.resultCounts}

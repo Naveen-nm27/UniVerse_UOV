@@ -3,6 +3,7 @@ import Workspace from "../../components/Workspace";
 import { RequestState, Table, Pagination } from "../../components/RemoteData";
 import { useRemote } from "../../hooks/use-remote";
 import { queryString } from "../../api/client";
+import { LecturerOverviewCharts } from "../../components/charts/RoleDashboardCharts";
 const navigation = [
   ["Overview", "/lecturer"],
   ["Modules", "/lecturer/modules"],
@@ -84,6 +85,7 @@ export default function LecturerDashboard() {
                       </article>
                     ))}
                   </div>
+                  <LecturerOverviewCharts data={rows} />
                   <p>
                     Attendance records are available per session. Missing scans are shown as not
                     recorded.

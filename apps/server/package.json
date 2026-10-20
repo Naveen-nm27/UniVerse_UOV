@@ -12,6 +12,8 @@
     "test:v04": "node scripts/test-v04.js",
     "test:docker": "node scripts/test-v04-docker.js --browser",
     "create:ma": "node scripts/create-ma.js",
+    "seed:demo": "node scripts/seed-demo.js",
+    "test:seed:demo": "node scripts/test-v04-docker.js --seed-demo",
     "test:browser": "node scripts/test-v04.js --browser",
     "db:repair-ids": "node scripts/repair-generated-ids.js",
     "db:check-v04": "node scripts/check-v04.js",

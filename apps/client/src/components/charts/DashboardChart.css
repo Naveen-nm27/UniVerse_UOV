@@ -1,0 +1,101 @@
+.dashboard-charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  margin: 24px 0;
+}
+.dashboard-chart {
+  min-width: 0;
+  width: 100%;
+  margin: 0;
+  padding: 20px;
+  border: 1px solid #e8dce9;
+  border-radius: 16px;
+  background: #fff;
+  color: #36123f;
+}
+.dashboard-chart-title {
+  font-size: 16px;
+  font-weight: 700;
+}
+.dashboard-chart-description {
+  margin: 8px 0 18px;
+  color: #6a596d;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.dashboard-chart-canvas {
+  position: relative;
+  min-width: 0;
+  width: 100%;
+  margin-top: 18px;
+}
+.dashboard-chart-canvas canvas {
+  max-width: 100%;
+}
+.dashboard-chart-empty {
+  display: grid;
+  min-height: 160px;
+  place-items: center;
+  padding: 20px;
+  border: 1px dashed #dbcbdc;
+  border-radius: 10px;
+  color: #6a596d;
+  text-align: center;
+  font-size: 14px;
+}
+.dashboard-chart-data {
+  margin-top: 18px;
+  font-size: 13px;
+}
+.dashboard-chart .dashboard-chart-data > summary {
+  display: block;
+  min-height: 0;
+  width: fit-content;
+  padding: 7px 0;
+  color: #6d287e;
+  cursor: pointer;
+  font-weight: 600;
+}
+.dashboard-chart-data > summary:focus-visible,
+.dashboard-chart-table:focus-visible {
+  outline: 2px solid #6d287e;
+  outline-offset: 4px;
+}
+.dashboard-chart-table {
+  max-height: 320px;
+  margin-top: 10px;
+  overflow: auto;
+}
+.dashboard-chart-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.dashboard-chart-table caption {
+  text-align: left;
+  padding-bottom: 10px;
+  font-weight: 600;
+}
+.dashboard-chart-table th,
+.dashboard-chart-table td {
+  padding: 10px;
+  border-bottom: 1px solid #eee4ee;
+  text-align: left;
+}
+.dashboard-chart-table thead {
+  background: #f8f3f9;
+}
+.student-subject-card > .dashboard-chart {
+  width: auto;
+  margin: 0 12px 12px;
+}
+@media (max-width: 800px) {
+  .dashboard-charts-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .dashboard-chart {
+    padding: 16px;
+  }
+}

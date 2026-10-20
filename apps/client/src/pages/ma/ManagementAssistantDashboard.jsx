@@ -7,6 +7,7 @@ import AcademicSetup from "./AcademicSetup";
 import ResultManagement from "./ResultManagement";
 import AuditActivity from "./AuditActivity";
 import "./ManagementAssistantDashboard.css";
+import { ResultStatusChart } from "../../components/charts/RoleDashboardCharts";
 const navigation = [
   ["Overview", "/ma"],
   ["Users", "/ma/users"],
@@ -189,6 +190,7 @@ function Overview({ name }) {
       <div className="ma-dashboard-grid">
         <section className="ma-panel">
           <h2>Result queue</h2>
+          {data && <ResultStatusChart rows={data.workQueue} queue />}
           <p>Published results are excluded from this queue.</p>
           {data?.workQueue.map((item) => (
             <div className="ma-queue-item" key={item.status}>
