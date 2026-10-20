@@ -80,3 +80,8 @@ export const userQuerySchema = z
     q: z.string().trim().max(100).optional(),
   })
   .strict();
+
+export const userListQuerySchema = userQuerySchema.extend({
+  role: z.enum(["STUDENT", "LECTURER", "HOD", "DEAN", "MA", "ADMIN"]).optional(),
+  status: z.enum(["active", "inactive"]).optional(),
+});

@@ -3,6 +3,7 @@ import {
   login,
   register,
   list,
+  summary,
   updateStatus,
   changePassword,
 } from "../controllers/user.controller.js";
@@ -12,7 +13,7 @@ import { validate } from "../middleware/validate.js";
 import {
   loginSchema,
   userSchema,
-  userQuerySchema,
+  userListQuerySchema,
   passwordSchema,
   positiveId,
 } from "@universe/shared-validation";
@@ -25,7 +26,8 @@ router.post("/login", validate(loginSchema), login);
 router.get("/me", authenticate, (req, res) => res.json({ data: req.user }));
 router.post("/password", authenticate, validate(passwordSchema), changePassword);
 router.use(authenticate, requireRole("MA"));
-router.get("/", validate(userQuerySchema, "query"), list);
+router.get("/summary", summary);
+router.get("/", validate(userListQuerySchema, "query"), list);
 router.post(["/", "/register"], requirePermission("users.create"), validate(userSchema), register);
 router.patch(
   "/:userId/status",

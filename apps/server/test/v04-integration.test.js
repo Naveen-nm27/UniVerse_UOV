@@ -148,6 +148,53 @@ test(
           assert.deepEqual(filtered.data.data.subjects, []);
         },
       );
+      await t.test("MA user filters combine search, role, status and pagination", async () => {
+        const first = await req("/api/users?role=STUDENT&pageSize=1");
+        assert.equal(first.status, 200);
+        assert.equal(first.data.meta.total, 3);
+        assert.equal(first.data.data.length, 1);
+        const second = await req("/api/users?role=STUDENT&pageSize=1&page=2");
+        assert.notEqual(first.data.data[0].id, second.data.data[0].id);
+        const all = await req("/api/users?q=fixture&role=LECTURER");
+        assert.deepEqual(all.data.data.map((user) => user.id).sort(), [2, 3]);
+        await db.query("UPDATE USERS SET is_active=0 WHERE user_id=8");
+        try {
+          const inactive = await req("/api/users?q=fixture&role=STUDENT&status=inactive");
+          assert.equal(inactive.status, 200);
+          assert.equal(inactive.data.meta.total, 1);
+          assert.deepEqual(
+            inactive.data.data.map((user) => user.id),
+            [8],
+          );
+          assert.equal(inactive.data.data[0].isActive, false);
+          const active = await req("/api/users?role=STUDENT&status=active");
+          assert.deepEqual(active.data.data.map((user) => user.id).sort(), [7, 9]);
+          const summary = await req("/api/users/summary");
+          assert.equal(summary.status, 200);
+          assert.equal(summary.data.data.total, 9);
+          assert.equal(summary.data.data.active, 8);
+          assert.equal(summary.data.data.inactive, 1);
+          assert.deepEqual(
+            summary.data.data.byRole.find((row) => row.role === "STUDENT"),
+            {
+              role: "STUDENT",
+              total: 3,
+              active: 2,
+              inactive: 1,
+            },
+          );
+          assert.equal(summary.data.data.byRole.find((row) => row.role === "LECTURER").total, 2);
+          assert.equal(JSON.stringify(summary.data).includes("password"), false);
+        } finally {
+          await db.query("UPDATE USERS SET is_active=1 WHERE user_id=8");
+        }
+        assert.equal((await req("/api/users?role=INVALID")).status, 400);
+        assert.equal((await req("/api/users?status=INVALID")).status, 400);
+        assert.equal((await req("/api/users?role=LECTURER&q=no-such-user")).data.meta.total, 0);
+        for (const actor of [2, 4, 5, 6, 7])
+          assert.equal((await req("/api/users/summary", { actor })).status, 403);
+        assert.equal((await fetch(`${base}/api/users/summary`)).status, 401);
+      });
       await t.test("V04 entity names and mapped columns are unique and present", async () => {
         assert.equal(
           new Set(db.entityMetadatas.map((m) => m.name)).size,

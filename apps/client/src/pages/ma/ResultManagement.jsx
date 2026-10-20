@@ -51,7 +51,7 @@ function Workflow() {
       <p>
         Record the verified outcome from each office. Students see final results after publication.
       </p>
-      <label>
+      <label className="ma-field">
         Filter status{" "}
         <select
           value={status}
@@ -128,7 +128,9 @@ function Workflow() {
                 Verification note (required for returns)
                 <textarea name="note" maxLength={500} />
               </label>
-              <button disabled={busy}>{busy ? "Recording…" : "Review and record status"}</button>
+              <button className="ma-button ma-button-primary" disabled={busy}>
+                {busy ? "Recording…" : "Review and record status"}
+              </button>
             </form>
           ) : (
             <p>No further status changes are available.</p>
@@ -154,7 +156,7 @@ function GradeEntry() {
         Select the module offering and enrollment attempt before entering an approved letter grade.
       </p>
       <RequestState {...offerings} />
-      <label>
+      <label className="ma-field">
         Module offering
         <select
           value={offeringId}
@@ -226,7 +228,7 @@ function EntryForm({
       {message && <p role="status">{message}</p>}
       {context.data && (
         <>
-          <label>
+          <label className="ma-field">
             Grade type
             <select
               value={kind}
@@ -262,7 +264,9 @@ function EntryForm({
                 <Choice name="grade" label="ICA grade" options={context.data.data.grades} />
               </>
             )}
-            <button disabled={busy}>{busy ? "Saving…" : "Review and save grades"}</button>
+            <button className="ma-button ma-button-primary" disabled={busy}>
+              {busy ? "Saving…" : "Review and save grades"}
+            </button>
           </form>
         </>
       )}

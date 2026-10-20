@@ -9,6 +9,9 @@ export function loginUser({ email, password }) {
 export function getUsers(query, options) {
   return apiRequest(`/users${queryString(query)}`, options);
 }
+export async function getUserSummary(options) {
+  return (await apiRequest("/users/summary", options)).data;
+}
 export async function createUser(input) {
   return (await apiRequest("/users", { method: "POST", body: input })).data;
 }

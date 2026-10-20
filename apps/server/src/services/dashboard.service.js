@@ -18,7 +18,7 @@ export async function getMaDashboard(userId) {
   const schema = await getSchema();
 
   let todayLectureSessions = null;
-  
+
   if (schema.has("LECTURE_SESSIONS")) {
     const [row] = await AppDataSource.query(
       "SELECT COUNT(*) AS total FROM LECTURE_SESSIONS WHERE session_date=?",
@@ -47,5 +47,4 @@ export async function getMaDashboard(userId) {
     },
     generatedAt: new Date().toISOString(),
   };
-  
 }

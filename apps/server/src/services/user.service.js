@@ -24,11 +24,13 @@ export async function loginUser(email, password) {
   await repo.update(user.userId, { lastLoginAt: new Date() });
   return { token, user: sessionUser(user) };
 }
-export async function listUsers({ page, pageSize, q }) {
+export async function listUsers({ page, pageSize, q, role, status }) {
   const query = AppDataSource.getRepository("User")
     .createQueryBuilder("u")
     .select(["u.userId", "u.name", "u.email", "u.roleCode", "u.isActive", "u.mustChangePassword"]);
-  if (q) query.where("u.name LIKE :q OR u.email LIKE :q", { q: `%${q}%` });
+  if (q) query.where("(u.name LIKE :q OR u.email LIKE :q)", { q: `%${q}%` });
+  if (role) query.andWhere("u.roleCode = :role", { role });
+  if (status) query.andWhere("u.isActive = :isActive", { isActive: status === "active" });
   const [users, total] = await query
     .orderBy("u.userId", "DESC")
     .skip((page - 1) * pageSize)
@@ -41,6 +43,23 @@ export async function listUsers({ page, pageSize, q }) {
 }
 export async function createStudent(input, actorId) {
   return createUser({ ...input, role: "STUDENT" }, actorId);
+}
+export async function getUserSummary() {
+  const counts = await AppDataSource.query(
+    "SELECT role_code AS role, COUNT(*) AS total, SUM(is_active = 1) AS active FROM USERS GROUP BY role_code",
+  );
+  const byRole = Object.keys(dashboardPaths).map((role) => {
+    const row = counts.find((item) => item.role === role);
+    const total = Number(row?.total || 0);
+    const active = Number(row?.active || 0);
+    return { role, total, active, inactive: total - active };
+  });
+  return {
+    total: byRole.reduce((sum, row) => sum + row.total, 0),
+    active: byRole.reduce((sum, row) => sum + row.active, 0),
+    inactive: byRole.reduce((sum, row) => sum + row.inactive, 0),
+    byRole,
+  };
 }
 export async function createUser(input, actorId) {
   const passwordHash = await bcrypt.hash(input.password, 12);

@@ -1,9 +1,22 @@
 import { useEffect, useState } from "react";
-import { createUser, getUsers, setUserActive } from "../../api/users";
+import { createUser, getUsers, getUserSummary, setUserActive } from "../../api/users";
 import { getLookup } from "../../api/ma";
 import { getSession } from "../../api/client";
+import DashboardChart from "../../components/charts/DashboardChart";
+const roleLabels = {
+  STUDENT: "Students",
+  LECTURER: "Lecturers",
+  HOD: "Heads of department",
+  DEAN: "Deans",
+  MA: "Management assistants",
+  ADMIN: "Administrators",
+};
 export default function ManagementUsers() {
   const [data, setData] = useState(null);
+  const [summary, setSummary] = useState(null);
+  const [summaryError, setSummaryError] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [lookups, setLookups] = useState({ programmes: [], batches: [], departments: [] });
   const [role, setRole] = useState("STUDENT");
   const [lookupError, setLookupError] = useState("");
@@ -15,6 +28,23 @@ export default function ManagementUsers() {
   const [retry, setRetry] = useState(0);
   const [busy, setBusy] = useState(false);
   const [showForm, setShowForm] = useState(window.location.pathname.endsWith("/new"));
+  useEffect(() => {
+    const controller = new AbortController();
+    getUserSummary({ signal: controller.signal })
+      .then((response) => {
+        if (!controller.signal.aborted) {
+          setSummary(response);
+          setSummaryError("");
+        }
+      })
+      .catch((e) => {
+        if (!controller.signal.aborted) {
+          setSummary(null);
+          setSummaryError(e.message);
+        }
+      });
+    return () => controller.abort();
+  }, [retry]);
   useEffect(() => {
     const controller = new AbortController();
     Promise.all([
@@ -40,7 +70,10 @@ export default function ManagementUsers() {
         if (controller.signal.aborted) return;
         setError("");
         setData(null);
-        return getUsers({ page, pageSize: 25, q }, { signal: controller.signal });
+        return getUsers(
+          { page, pageSize: 25, q, role: roleFilter, status: statusFilter },
+          { signal: controller.signal },
+        );
       })
       .then((response) => {
         if (!controller.signal.aborted) setData(response);
@@ -49,7 +82,7 @@ export default function ManagementUsers() {
         if (!controller.signal.aborted) setError(e.message);
       });
     return () => controller.abort();
-  }, [page, q, retry]);
+  }, [page, q, roleFilter, statusFilter, retry]);
   async function submit(event) {
     event.preventDefault();
     const form = event.currentTarget;
@@ -113,6 +146,40 @@ export default function ManagementUsers() {
         <p className="ma-success" role="status">
           {success}
         </p>
+      )}
+      {summaryError && (
+        <p className="ma-error" role="alert">
+          User totals could not be loaded. {summaryError}{" "}
+          <button onClick={() => setRetry((value) => value + 1)}>Try again</button>
+        </p>
+      )}
+      {!summary && !summaryError && <p role="status">Loading user totals…</p>}
+      {summary && (
+        <section className="ma-users-overview" aria-label="University user totals">
+          <div className="ma-summary-grid ma-user-totals">
+            {[
+              ["Total users", summary.total],
+              ["Students", summary.byRole.find((item) => item.role === "STUDENT")?.total ?? 0],
+              ["Lecturers", summary.byRole.find((item) => item.role === "LECTURER")?.total ?? 0],
+              ["Inactive accounts", summary.inactive],
+            ].map(([label, count]) => (
+              <article className="ma-summary-card" key={label}>
+                <span className="ma-card-label">{label}</span>
+                <strong className="ma-card-value">{count.toLocaleString()}</strong>
+                <span className="ma-card-context">Across all accounts</span>
+              </article>
+            ))}
+          </div>
+          <DashboardChart
+            title="Users by role"
+            description="University-wide account totals, including inactive accounts. List filters apply to the table below."
+            labels={summary.byRole.map((item) => roleLabels[item.role])}
+            datasets={[{ label: "Users", data: summary.byRole.map((item) => item.total) }]}
+            horizontal
+            height={240}
+            axisLabel="Users"
+          />
+        </section>
       )}
       {showForm && (
         <section className="ma-panel">
@@ -192,6 +259,7 @@ export default function ManagementUsers() {
         </section>
       )}
       <section className="ma-panel">
+        <h2>User directory</h2>
         <form
           className="ma-toolbar"
           onSubmit={(event) => {
@@ -203,16 +271,64 @@ export default function ManagementUsers() {
           <label>
             Search users
             <input
+              type="search"
               value={search}
               maxLength={100}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Name or email"
             />
           </label>
+          <label>
+            Filter by role
+            <select
+              name="roleFilter"
+              value={roleFilter}
+              onChange={(event) => {
+                setRoleFilter(event.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="">All roles</option>
+              {Object.entries(roleLabels).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Account status
+            <select
+              name="statusFilter"
+              value={statusFilter}
+              onChange={(event) => {
+                setStatusFilter(event.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="">All statuses</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </label>
           <button className="ma-button ma-button-secondary">Search</button>
+          <button
+            type="button"
+            className="ma-button ma-button-secondary"
+            disabled={!search && !q && !roleFilter && !statusFilter}
+            onClick={() => {
+              setSearch("");
+              setQ("");
+              setRoleFilter("");
+              setStatusFilter("");
+              setPage(1);
+            }}
+          >
+            Clear filters
+          </button>
         </form>
         {!data && !error && <p role="status">Loading users…</p>}
-        {data && !data.data.length && <p>No users match your search.</p>}
+        {data && !data.data.length && <p role="status">No users match these filters.</p>}
         {data?.data.length > 0 && (
           <div className="ma-table-scroll">
             <table className="ma-table">

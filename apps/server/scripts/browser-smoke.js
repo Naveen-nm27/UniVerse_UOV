@@ -152,6 +152,46 @@ export async function runBrowserChecks(apiOrigin, credentialVersion) {
       "document.querySelectorAll('.ma-card-value').length===4 && document.querySelector('.ma-card-value').textContent!=='—'",
     );
     await page("/ma/users", "document.querySelectorAll('.ma-table tbody tr').length>0");
+    await wait("Boolean(document.querySelector('canvas[aria-label=\"Users by role\"]'))");
+    const userTotals = await evaluate(
+      "[...document.querySelectorAll('.ma-user-totals .ma-card-value')].map(node=>node.textContent)",
+    );
+    await evaluate(
+      "{ const select=document.querySelector('select[name=roleFilter]');select.value='LECTURER';select.dispatchEvent(new Event('change',{bubbles:true})); }",
+    );
+    await wait(
+      "document.querySelectorAll('.ma-table tbody tr').length>0 && [...document.querySelectorAll('.ma-table tbody tr')].every(row=>row.cells[2].textContent==='LECTURER')",
+    );
+    await evaluate(
+      "{ const select=document.querySelector('select[name=statusFilter]');select.value='inactive';select.dispatchEvent(new Event('change',{bubbles:true})); }",
+    );
+    await wait("document.body.innerText.includes('No users match these filters.')");
+    assert.deepEqual(
+      await evaluate(
+        "[...document.querySelectorAll('.ma-user-totals .ma-card-value')].map(node=>node.textContent)",
+      ),
+      userTotals,
+    );
+    await evaluate(
+      "[...document.querySelectorAll('.ma-toolbar button')].find(button=>button.textContent==='Clear filters').click()",
+    );
+    await wait(
+      "document.querySelectorAll('.ma-table tbody tr').length>0 && document.querySelector('select[name=roleFilter]').value===''",
+    );
+    await command("Emulation.setDeviceMetricsOverride", {
+      width: 375,
+      height: 812,
+      deviceScaleFactor: 1,
+      mobile: true,
+    });
+    assert.ok(await evaluate("document.documentElement.scrollWidth<=window.innerWidth"));
+    assert.ok(await evaluate("document.querySelector('canvas').getBoundingClientRect().width>0"));
+    await command("Emulation.setDeviceMetricsOverride", {
+      width: 1280,
+      height: 900,
+      deviceScaleFactor: 1,
+      mobile: false,
+    });
     await evaluate("document.querySelector('.ma-welcome button').click()");
     assert.ok(await evaluate("Boolean(document.querySelector('input[name=registrationNumber]'))"));
     await page(
@@ -170,6 +210,18 @@ export async function runBrowserChecks(apiOrigin, credentialVersion) {
     );
     await wait("document.querySelector('select[name=enrollmentId]')?.options.length>1");
     await page("/ma/results", "document.querySelectorAll('.ma-table tbody tr').length>0");
+    assert.ok(
+      await evaluate(
+        "parseFloat(getComputedStyle(document.querySelector('.ma-field select')).minHeight)>=40 && parseFloat(getComputedStyle(document.querySelector('.ma-field select')).borderRadius)>0",
+      ),
+    );
+    await evaluate("document.querySelector('.ma-table tbody button').click()");
+    await wait("document.body.innerText.includes('Status history')");
+    assert.ok(
+      await evaluate(
+        "[...document.querySelectorAll('.ma-content button')].every(button=>parseFloat(getComputedStyle(button).borderRadius)>0)",
+      ),
+    );
     console.log("Browser: MA accounts, academic resources, grade context and workflow rendered.");
     await actor(7, "STUDENT");
     await page("/student", "document.querySelectorAll('.student-subject-result').length>0");

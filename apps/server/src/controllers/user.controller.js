@@ -5,6 +5,9 @@ export async function login(req, res) {
 export async function list(req, res) {
   res.json(await users.listUsers(req.validated));
 }
+export async function summary(req, res) {
+  res.json({ data: await users.getUserSummary() });
+}
 export async function register(req, res) {
   res.status(201).json({ data: await users.createUser(req.validated, req.auth.userId) });
 }
