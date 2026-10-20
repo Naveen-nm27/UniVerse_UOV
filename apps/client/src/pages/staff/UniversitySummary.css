@@ -1,0 +1,54 @@
+.staff-university-summary {
+  margin-bottom: 28px;
+}
+.staff-university-summary > p,
+.staff-hall-summary > p {
+  color: var(--ma-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.staff-university-summary .staff-summary-cards {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 20px;
+}
+.staff-university-summary .ma-card-context {
+  line-height: 1.6;
+}
+.staff-hall-summary {
+  padding: 20px;
+  border: 1px solid var(--ma-border);
+  border-radius: 14px;
+  background: var(--ma-surface);
+}
+.staff-hall-summary h3 {
+  margin-top: 0;
+}
+.staff-hall-summary dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 24px;
+  margin: 0;
+}
+.staff-hall-summary dl > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--ma-border);
+}
+.staff-hall-summary dt {
+  font-size: 13px;
+}
+.staff-hall-summary dd {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ma-plum);
+}
+@media (max-width: 760px) {
+  .staff-university-summary .staff-summary-cards,
+  .staff-hall-summary dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

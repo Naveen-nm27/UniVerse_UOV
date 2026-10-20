@@ -4,6 +4,7 @@ import { RequestState, Table, Pagination } from "../../components/RemoteData";
 import { useRemote } from "../../hooks/use-remote";
 import { queryString } from "../../api/client";
 import { ResultStatusChart } from "../../components/charts/RoleDashboardCharts";
+import UniversitySummary from "./UniversitySummary";
 const column = (key, label) => ({ key, label });
 export default function StaffDashboard({ role }) {
   const root = role.toLowerCase(),
@@ -64,6 +65,11 @@ export default function StaffDashboard({ role }) {
       ) : (
         <>
           <RequestState {...records} />
+          {section === "overview" &&
+            ["HOD", "DEAN"].includes(role) &&
+            records.data?.data.universitySummary && (
+              <UniversitySummary data={records.data.data.universitySummary} />
+            )}
           {records.data && (
             <section className="ma-panel">
               {section === "overview" && (

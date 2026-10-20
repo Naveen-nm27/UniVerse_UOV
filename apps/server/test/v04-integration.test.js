@@ -195,6 +195,69 @@ test(
           assert.equal((await req("/api/users/summary", { actor })).status, 403);
         assert.equal((await fetch(`${base}/api/users/summary`)).status, 401);
       });
+      await t.test(
+        "HOD and dean summaries cover the university while results remain departmental",
+        async () => {
+          const hall = await db.query(
+            "INSERT INTO HALLS (hall_name,capacity) VALUES ('Unassigned hall',NULL)",
+          );
+          await db.query("UPDATE USERS SET is_active=0 WHERE user_id=8");
+          await db.query("UPDATE DEVICES SET is_active=0 WHERE device_id=2");
+          try {
+            for (const actor of [4, 5]) {
+              const response = await req("/api/staff/dashboard", { actor });
+              assert.equal(response.status, 200);
+              const dashboard = response.data.data;
+              const summary = dashboard.universitySummary;
+              assert.equal(summary.users.total, 9);
+              assert.equal(summary.users.active, 8);
+              assert.equal(summary.users.inactive, 1);
+              assert.deepEqual(
+                summary.users.byRole.find((row) => row.role === "STUDENT"),
+                {
+                  role: "STUDENT",
+                  total: 3,
+                  active: 2,
+                  inactive: 1,
+                },
+              );
+              assert.equal(summary.users.byRole.find((row) => row.role === "LECTURER").total, 2);
+              assert.deepEqual(summary.devices, { total: 2, active: 1, inactive: 1 });
+              assert.deepEqual(summary.halls, {
+                total: 3,
+                withDevices: 2,
+                withoutDevices: 1,
+                knownCapacity: 150,
+                unknownCapacity: 1,
+              });
+              assert.equal(dashboard.departmentId, 1);
+              assert.equal(
+                dashboard.resultCounts.reduce((sum, row) => sum + row.count, 0),
+                3,
+              );
+              const serialized = JSON.stringify(response.data);
+              for (const secret of [
+                "password",
+                "email",
+                "secret_ref",
+                "never-expose-this",
+                "fixture-device",
+              ])
+                assert.equal(serialized.includes(secret), false);
+              assert.equal((await req("/api/users", { actor })).status, 403);
+            }
+            for (const actor of [2, 7])
+              assert.equal((await req("/api/staff/dashboard", { actor })).status, 403);
+            await db.query("UPDATE DEPARTMENTS SET head_lecturer_id=NULL WHERE department_id=1");
+            assert.equal((await req("/api/staff/dashboard", { actor: 4 })).status, 403);
+          } finally {
+            await db.query("UPDATE DEPARTMENTS SET head_lecturer_id=4 WHERE department_id=1");
+            await db.query("UPDATE USERS SET is_active=1 WHERE user_id=8");
+            await db.query("UPDATE DEVICES SET is_active=1 WHERE device_id=2");
+            await db.query("DELETE FROM HALLS WHERE hall_id=?", [hall.insertId]);
+          }
+        },
+      );
       await t.test("V04 entity names and mapped columns are unique and present", async () => {
         assert.equal(
           new Set(db.entityMetadatas.map((m) => m.name)).size,

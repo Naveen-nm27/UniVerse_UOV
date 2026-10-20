@@ -1,6 +1,7 @@
 import { AppDataSource as db } from "../data-source.js";
 import { ApiError } from "../utils/api-error.js";
 import { campusTimestamp } from "../utils/campus-time.js";
+import { getUserSummary } from "./user.service.js";
 
 export async function staffScope(userId, role) {
   if (["MA", "ADMIN"].includes(role)) return { departmentId: null, departmentName: null };
@@ -100,9 +101,37 @@ export async function staffDashboard(userId, role) {
       (SELECT COUNT(*) FROM MA_STAFF ma JOIN USERS u ON u.user_id=ma.user_id WHERE u.is_active=1) AS activeMaStaff`);
     summary = row;
   }
+  let universitySummary;
+  if (["HOD", "DEAN"].includes(role)) {
+    const [users, [devices], [halls]] = await Promise.all([
+      getUserSummary(),
+      db.query("SELECT COUNT(*) AS total, COALESCE(SUM(is_active=1),0) AS active FROM DEVICES"),
+      db.query(`SELECT COUNT(*) AS total,
+        COALESCE(SUM(EXISTS(SELECT 1 FROM DEVICES d WHERE d.hall_id=h.hall_id)),0) AS withDevices,
+        COALESCE(SUM(h.capacity),0) AS knownCapacity,
+        COALESCE(SUM(h.capacity IS NULL),0) AS unknownCapacity
+        FROM HALLS h`),
+    ]);
+    universitySummary = {
+      users,
+      devices: {
+        total: Number(devices.total),
+        active: Number(devices.active),
+        inactive: Number(devices.total) - Number(devices.active),
+      },
+      halls: {
+        total: Number(halls.total),
+        withDevices: Number(halls.withDevices),
+        withoutDevices: Number(halls.total) - Number(halls.withDevices),
+        knownCapacity: Number(halls.knownCapacity),
+        unknownCapacity: Number(halls.unknownCapacity),
+      },
+    };
+  }
   return {
     ...scope,
     summary,
+    ...(universitySummary ? { universitySummary } : {}),
     resultCounts: queue.map((r) => ({ ...r, count: Number(r.count) })),
     generatedAt: new Date().toISOString(),
     integrations: { backups: false, monitoring: false, reports: false, reportApprovals: false },

@@ -304,6 +304,47 @@ export async function runBrowserChecks(apiOrigin, credentialVersion) {
     ]) {
       await actor(userId, role);
       await page(`/${role.toLowerCase()}`, "document.querySelector('.ma-table tbody')!==null");
+      if (["HOD", "DEAN"].includes(role)) {
+        await wait("document.querySelectorAll('.staff-university-summary canvas').length===2");
+        const summary = await evaluate(
+          "fetch('/api/staff/dashboard',{headers:{Authorization:'Bearer '+JSON.parse(localStorage.getItem('universe_session')).token}}).then(response=>response.json()).then(body=>body.data.universitySummary)",
+        );
+        assert.deepEqual(
+          await evaluate(
+            "[...document.querySelectorAll('.staff-summary-cards .ma-card-value')].map(node=>Number(node.textContent.replaceAll(',','')))",
+          ),
+          [summary.users.total, summary.devices.total, summary.halls.total],
+        );
+        assert.deepEqual(
+          await evaluate(
+            "[...document.querySelectorAll('.staff-hall-summary dd')].map(node=>Number(node.textContent.replaceAll(',','')))",
+          ),
+          [
+            summary.halls.withDevices,
+            summary.halls.withoutDevices,
+            summary.halls.knownCapacity,
+            summary.halls.unknownCapacity,
+          ],
+        );
+        await command("Emulation.setDeviceMetricsOverride", {
+          width: 375,
+          height: 812,
+          deviceScaleFactor: 1,
+          mobile: true,
+        });
+        assert.ok(await evaluate("document.documentElement.scrollWidth<=window.innerWidth"));
+        assert.ok(
+          await evaluate(
+            "[...document.querySelectorAll('.staff-university-summary canvas')].every(canvas=>canvas.getBoundingClientRect().width>0)",
+          ),
+        );
+        await command("Emulation.setDeviceMetricsOverride", {
+          width: 1280,
+          height: 900,
+          deviceScaleFactor: 1,
+          mobile: false,
+        });
+      }
       await page(
         role === "ADMIN" ? "/admin/audit" : `/${role.toLowerCase()}/results`,
         "document.querySelectorAll('.ma-table tbody tr').length>0",
