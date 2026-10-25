@@ -25,69 +25,21 @@ Account creation and grade/status changes belong to the MA workflow. Permission 
 
 ## Folder structure
 
-The diagrams show the tracked application structure. Generated dependencies, build output and local-only working files are omitted.
-
-### Repository overview
-
-```mermaid
-flowchart LR
-    root["UniVerse_UOV/"] --> apps["apps/"]
-    root --> packages["packages/"]
-    root --> docker["docker/"]
-    root --> compose["docker-compose.yml — local MySQL and persistent volume"]
-    root --> manifest["package.json — workspace scripts"]
-    root --> readme["README.md"]
-    apps --> client["client/ — React frontend"]
-    apps --> server["server/ — Express API"]
-    packages --> permissions["shared-permissions/ — permission API placeholder"]
-    packages --> types["shared-types/ — shared JavaScript contracts"]
-    packages --> validation["shared-validation/ — shared Zod schemas"]
-    docker --> dockerEnv[".env.example — MySQL password template"]
-```
-
-### Client workspace
-
-```mermaid
-flowchart LR
-    clientRoot["apps/client/"] --> clientPublic["public/ — static icons and favicon"]
-    clientRoot --> clientSrc["src/"]
-    clientRoot --> clientEnv[".env.example — API URL template"]
-    clientRoot --> viteConfig["vite.config.js — development server and build"]
-    clientSrc --> api["api/ — HTTP client and role-specific calls"]
-    clientSrc --> assets["assets/ — images and bundled assets"]
-    clientSrc --> components["components/ — login, workspace, remote data and charts"]
-    clientSrc --> hooks["hooks/ — remote data and mobile helpers"]
-    clientSrc --> pages["pages/"]
-    clientSrc --> appEntry["App.jsx — role-based navigation"]
-    clientSrc --> reactEntry["main.jsx — React entry point"]
-    pages --> admin["admin/"]
-    pages --> hod["hod/"]
-    pages --> lecturer["lecturer/"]
-    pages --> ma["ma/"]
-    pages --> staff["staff/ — shared staff views, including dean"]
-    pages --> student["student/"]
-```
-
-### Server workspace
-
-```mermaid
-flowchart LR
-    serverRoot["apps/server/"] --> database["database/"]
-    serverRoot --> scripts["scripts/ — database setup, demo seed and smoke checks"]
-    serverRoot --> serverSrc["src/"]
-    serverRoot --> tests["test/ — API, policy, seed and integration tests"]
-    serverRoot --> serverEnv[".env.example — API and database configuration"]
-    database --> schema["schema-v04.sql — canonical fresh-install schema"]
-    serverSrc --> config["config/ — JWT and session configuration"]
-    serverSrc --> controllers["controllers/ — request and response handlers"]
-    serverSrc --> entities["entities/ — TypeORM mappings for V04 tables"]
-    serverSrc --> middleware["middleware/ — authentication, roles, permissions, validation and errors"]
-    serverSrc --> routes["routes/ — API endpoint definitions"]
-    serverSrc --> services["services/ — queries, academic policy and business workflows"]
-    serverSrc --> utils["utils/ — API errors and campus time helpers"]
-    serverSrc --> expressApp["app.js — Express app and route mounting"]
-    serverSrc --> dataSource["data-source.js — MySQL and TypeORM connection"]
-    serverSrc --> serverEntry["server.js — database initialization and API startup"]
+```text
+UniVerse_UOV/
+|-- apps/
+|   |-- client/          # React frontend
+|   |   `-- src/         # API calls, components, hooks and role-based pages
+|   `-- server/          # Express backend
+|       |-- database/    # V04 SQL schema
+|       |-- src/         # Routes, controllers, services, middleware and entities
+|       |-- scripts/     # Setup, demo data and database checks
+|       `-- test/        # Backend tests
+|-- packages/            # Shared validation, types and permissions
+|-- docker/              # Database environment template
+|-- docker-compose.yml   # Local MySQL service
+|-- package.json         # Workspace scripts
+`-- README.md
 ```
 
 ## API endpoints
