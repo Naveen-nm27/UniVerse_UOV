@@ -25,54 +25,70 @@ Account creation and grade/status changes belong to the MA workflow. Permission 
 
 ## Folder structure
 
-```text
-UniVerse_UOV/
-|-- apps/
-|   |-- client/
-|   |   |-- public/                  # Static icons and favicon
-|   |   |-- src/
-|   |   |   |-- api/                 # HTTP client and role-specific API calls
-|   |   |   |-- assets/              # Images and bundled assets
-|   |   |   |-- components/          # Login, workspace, remote data and charts
-|   |   |   |-- hooks/               # Remote data and mobile helpers
-|   |   |   |-- pages/
-|   |   |   |   |-- admin/
-|   |   |   |   |-- hod/
-|   |   |   |   |-- lecturer/
-|   |   |   |   |-- ma/
-|   |   |   |   |-- staff/           # Shared staff views, including dean
-|   |   |   |   `-- student/
-|   |   |   |-- App.jsx              # Role-based application navigation
-|   |   |   `-- main.jsx             # React entry point
-|   |   |-- .env.example
-|   |   `-- vite.config.js
-|   `-- server/
-|       |-- database/schema-v04.sql  # Canonical fresh-install schema
-|       |-- scripts/                # Database setup, demo seed and smoke checks
-|       |-- src/
-|       |   |-- config/             # JWT and session configuration
-|       |   |-- controllers/        # Request/response handlers
-|       |   |-- entities/           # TypeORM mappings for V04 tables
-|       |   |-- middleware/         # Authentication, roles, permissions, validation, errors
-|       |   |-- routes/             # API endpoint definitions (listed below)
-|       |   |-- services/           # Queries, academic policy and business workflows
-|       |   |-- utils/              # API errors and campus time helpers
-|       |   |-- app.js              # Express app and route mounting
-|       |   |-- data-source.js      # MySQL/TypeORM connection
-|       |   `-- server.js           # Database initialization and API startup
-|       |-- test/                   # API, policy, seed and integration tests
-|       `-- .env.example
-|-- packages/
-|   |-- shared-permissions/         # Permission API placeholder
-|   |-- shared-types/               # Shared JavaScript contracts
-|   `-- shared-validation/          # Shared Zod schemas
-|-- docker/.env.example             # MySQL container password template
-|-- docker-compose.yml              # Local MySQL service and persistent volume
-|-- package.json                    # Workspace scripts
-`-- README.md
+The diagrams show the tracked application structure. Generated dependencies, build output and local-only working files are omitted.
+
+### Repository overview
+
+```mermaid
+flowchart LR
+    root["UniVerse_UOV/"] --> apps["apps/"]
+    root --> packages["packages/"]
+    root --> docker["docker/"]
+    root --> compose["docker-compose.yml — local MySQL and persistent volume"]
+    root --> manifest["package.json — workspace scripts"]
+    root --> readme["README.md"]
+    apps --> client["client/ — React frontend"]
+    apps --> server["server/ — Express API"]
+    packages --> permissions["shared-permissions/ — permission API placeholder"]
+    packages --> types["shared-types/ — shared JavaScript contracts"]
+    packages --> validation["shared-validation/ — shared Zod schemas"]
+    docker --> dockerEnv[".env.example — MySQL password template"]
 ```
 
-Generated dependencies, build output and local-only working files are omitted from the tree.
+### Client workspace
+
+```mermaid
+flowchart LR
+    clientRoot["apps/client/"] --> clientPublic["public/ — static icons and favicon"]
+    clientRoot --> clientSrc["src/"]
+    clientRoot --> clientEnv[".env.example — API URL template"]
+    clientRoot --> viteConfig["vite.config.js — development server and build"]
+    clientSrc --> api["api/ — HTTP client and role-specific calls"]
+    clientSrc --> assets["assets/ — images and bundled assets"]
+    clientSrc --> components["components/ — login, workspace, remote data and charts"]
+    clientSrc --> hooks["hooks/ — remote data and mobile helpers"]
+    clientSrc --> pages["pages/"]
+    clientSrc --> appEntry["App.jsx — role-based navigation"]
+    clientSrc --> reactEntry["main.jsx — React entry point"]
+    pages --> admin["admin/"]
+    pages --> hod["hod/"]
+    pages --> lecturer["lecturer/"]
+    pages --> ma["ma/"]
+    pages --> staff["staff/ — shared staff views, including dean"]
+    pages --> student["student/"]
+```
+
+### Server workspace
+
+```mermaid
+flowchart LR
+    serverRoot["apps/server/"] --> database["database/"]
+    serverRoot --> scripts["scripts/ — database setup, demo seed and smoke checks"]
+    serverRoot --> serverSrc["src/"]
+    serverRoot --> tests["test/ — API, policy, seed and integration tests"]
+    serverRoot --> serverEnv[".env.example — API and database configuration"]
+    database --> schema["schema-v04.sql — canonical fresh-install schema"]
+    serverSrc --> config["config/ — JWT and session configuration"]
+    serverSrc --> controllers["controllers/ — request and response handlers"]
+    serverSrc --> entities["entities/ — TypeORM mappings for V04 tables"]
+    serverSrc --> middleware["middleware/ — authentication, roles, permissions, validation and errors"]
+    serverSrc --> routes["routes/ — API endpoint definitions"]
+    serverSrc --> services["services/ — queries, academic policy and business workflows"]
+    serverSrc --> utils["utils/ — API errors and campus time helpers"]
+    serverSrc --> expressApp["app.js — Express app and route mounting"]
+    serverSrc --> dataSource["data-source.js — MySQL and TypeORM connection"]
+    serverSrc --> serverEntry["server.js — database initialization and API startup"]
+```
 
 ## API endpoints
 
