@@ -28,51 +28,19 @@ Account creation and grade/status changes belong to the MA workflow. Permission 
 ```text
 UniVerse_UOV/
 |-- apps/
-|   |-- client/
-|   |   |-- public/                  # Static icons and favicon
-|   |   |-- src/
-|   |   |   |-- api/                 # HTTP client and role-specific API calls
-|   |   |   |-- assets/              # Images and bundled assets
-|   |   |   |-- components/          # Login, workspace, remote data and charts
-|   |   |   |-- hooks/               # Remote data and mobile helpers
-|   |   |   |-- pages/
-|   |   |   |   |-- admin/
-|   |   |   |   |-- hod/
-|   |   |   |   |-- lecturer/
-|   |   |   |   |-- ma/
-|   |   |   |   |-- staff/           # Shared staff views, including dean
-|   |   |   |   `-- student/
-|   |   |   |-- App.jsx              # Role-based application navigation
-|   |   |   `-- main.jsx             # React entry point
-|   |   |-- .env.example
-|   |   `-- vite.config.js
-|   `-- server/
-|       |-- database/schema-v04.sql  # Canonical fresh-install schema
-|       |-- scripts/                # Database setup, demo seed and smoke checks
-|       |-- src/
-|       |   |-- config/             # JWT and session configuration
-|       |   |-- controllers/        # Request/response handlers
-|       |   |-- entities/           # TypeORM mappings for V04 tables
-|       |   |-- middleware/         # Authentication, roles, permissions, validation, errors
-|       |   |-- routes/             # API endpoint definitions (listed below)
-|       |   |-- services/           # Queries, academic policy and business workflows
-|       |   |-- utils/              # API errors and campus time helpers
-|       |   |-- app.js              # Express app and route mounting
-|       |   |-- data-source.js      # MySQL/TypeORM connection
-|       |   `-- server.js           # Database initialization and API startup
-|       |-- test/                   # API, policy, seed and integration tests
-|       `-- .env.example
-|-- packages/
-|   |-- shared-permissions/         # Permission API placeholder
-|   |-- shared-types/               # Shared JavaScript contracts
-|   `-- shared-validation/          # Shared Zod schemas
-|-- docker/.env.example             # MySQL container password template
-|-- docker-compose.yml              # Local MySQL service and persistent volume
-|-- package.json                    # Workspace scripts
+|   |-- client/          # React frontend
+|   |   `-- src/         # API calls, components, hooks and role-based pages
+|   `-- server/          # Express backend
+|       |-- database/    # V04 SQL schema
+|       |-- src/         # Routes, controllers, services, middleware and entities
+|       |-- scripts/     # Setup, demo data and database checks
+|       `-- test/        # Backend tests
+|-- packages/            # Shared validation, types and permissions
+|-- docker/              # Database environment template
+|-- docker-compose.yml   # Local MySQL service
+|-- package.json         # Workspace scripts
 `-- README.md
 ```
-
-Generated dependencies, build output and local-only working files are omitted from the tree.
 
 ## API endpoints
 
